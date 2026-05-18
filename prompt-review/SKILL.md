@@ -20,8 +20,8 @@ Load this skill when:
 - A `CLAUDE.md` file is being edited (global `~/.claude/CLAUDE.md` or project-level)
 - A `SKILL.md` is being edited or created (any `~/.claude/skills/*/SKILL.md` or `.claude/skills/*/SKILL.md`)
 - A sub-agent / orchestrator system prompt is being edited
-- A prompt is being written in code that calls the Claude API (e.g. `mecanio-app` Rails: `.rb` files
-  with `Anthropic::Client`, strings with `system:` or `messages:`; also Python with the `anthropic` SDK)
+- A prompt is being written in code that calls the Claude API (e.g. `.rb` files with `Anthropic::Client`,
+  strings with `system:` or `messages:`; Python files with the `anthropic` SDK)
 - The user explicitly says: "review this prompt", "audit this", "what's missing from this prompt",
   "is this well written?", "how would you improve this?"
 
@@ -171,7 +171,7 @@ with confidence.
 
 ```
 BAD PROMPT
-"CRITICAL RULE: never return prices in USD, always COP.
+"CRITICAL RULE: never return prices in USD, always use the local currency.
 [... 2000 lines of instructions ...]
 OK, process the query."
 ```
