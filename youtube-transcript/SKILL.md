@@ -155,9 +155,10 @@ If the receipt is `MissingDependency`, run that and retry once. If pip refuses w
 - A cold read is a deliberate act with a real cost. NEVER do one in the same turn as the fetch
   unless the user asked for the content.
 - `TranscriptsDisabled` and `AgeRestricted` are permanent states. NEVER retry them.
-- `IpBlocked` and `RequestBlocked` are usually rate limiting and do clear. Never retry in a LOOP —
-  that deepens the throttle — but one deliberate attempt after a real pause is legitimate. Check
-  `caption_endpoint_only` first: when it is true, `youtube-screenshot` still works on that video and
+- `IpBlocked` and `RequestBlocked` report 429, but do NOT promise the user it will clear: measured
+  here, it survived 80 minutes of spaced retries. Offer at most one or two bounded attempts, then
+  point at a different network or a proxy. NEVER a tight loop.
+- Check `caption_endpoint_only` first: when true, `youtube-screenshot` still works on that video and
   the user should be told so.
 - `index.md` is generated. Edits to it are erased on the next run.
 - Transcripts are the creator's work. Summarise and quote briefly with attribution; never reproduce

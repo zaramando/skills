@@ -15,18 +15,23 @@ video works from this machine, which means:
 
 - `youtube-screenshot` will succeed on the very same video. Say so — otherwise the user reasonably
   concludes their whole setup is broken.
-- The underlying HTTP status is typically **429 Too Many Requests**, i.e. rate limiting, not a
-  permanent ban. It clears on its own.
+- The underlying HTTP status is **429 Too Many Requests**. The status code says rate limiting, but
+  do NOT read that as "wait and it comes back". Measured on this codebase: three spaced attempts
+  over 80 minutes (gaps of 10, 25 and 45 minutes) all returned the same block, while the player and
+  stream endpoints answered normally throughout. Waiting is unproven; treat it as the cheapest thing
+  to try, not as the thing that works.
 - It is endpoint-level, not client-level. Switching yt-dlp `player_client` (tv, ios, android,
   web_safari, mweb) hits the same 429 — verified, all five. Do not go looking for that workaround.
 - A yt-dlp subtitle fallback would NOT help either: it downloads captions from the same endpoint.
 
 Remedies, cheapest first:
 
-1. **Wait.** Rate limiting clears. Try again in a while — ONE deliberate retry after a real pause,
-   never a loop. A loop deepens the throttle.
-2. **Different network.** VPN off, or a different connection. Datacentre ranges are throttled
-   hardest, so a residential link usually works immediately.
+1. **Different network.** VPN off, or a different connection. Datacentre ranges are throttled
+   hardest, so a residential link usually works immediately. This is the remedy with evidence
+   behind it — try it FIRST, ahead of waiting.
+2. **Wait, but bounded.** One or two spaced attempts, then stop. Do not run an 80-minute backoff
+   like the one that produced the measurement above: it cost an hour and a half and returned
+   nothing. Never a tight loop, which deepens the throttle.
 3. **Proxy**, configured through the environment — never as a flag, because credentials in argv land
    in shell history and process listings:
 
