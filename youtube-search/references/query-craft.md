@@ -51,6 +51,27 @@ For a country-specific need, include the local term rather than the internationa
 The same word can also mark the WRONG country. *Cédula* is Colombian or Venezuelan, not Peruvian;
 a demo showing a Cédula field is not a Peruvian product no matter what the query asked for.
 
+## For a product category, search BRANDS — not the category
+
+The biggest single source of noise. Uploaders title videos with the product's NAME; almost nobody
+titles a video with its category. Searching the category matches the generic business-content
+cluster instead — dashboards, KPI explainers, ERP comparisons.
+
+```
+CATEGORY  "capital de trabajo para bodegas peru app"     -> ~13 of 16 rows generic noise
+BRAND     "Prestamype como funciona prestamo"
+          "Mibanco app prestamo negocio peru"
+          "Yape negocios prestamo como solicitar"        -> ~5 of 18, with official channels
+```
+
+So when the need is a product category, spend one step naming the brands in that market first, and
+build the spread from those names. If the brands are unknown, say so and ask — guessing a brand
+list and searching it silently presents one vendor's ecosystem as if it were the market.
+
+Watch for the **side of the transaction**. A brand can serve two audiences, and its videos will mix
+them: Prestamype searches return mostly "how to INVEST in factoring", which is the lender's side,
+not the merchant receiving the money. Group candidates by side before reporting them.
+
 ## Add the genre word
 
 The need usually implies a video genre. Naming it cuts the noise floor sharply:
