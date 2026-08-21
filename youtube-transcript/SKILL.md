@@ -74,8 +74,11 @@ history to restore.
      "video_id": "UNzCG3lw6O0",
      "path": "transcripts/UNzCG3lw6O0.md",
      "title": "Building Great Agent Skills: The Missing Manual",
+     "channel": "AI Engineer",
+     "index": "transcripts/index.md",
      "language": "English (en)",
      "generated": true,
+     "metadata_ok": true,
      "snippets": 412,
      "duration_seconds": 1274,
      "characters": 21840,
@@ -89,14 +92,19 @@ history to restore.
      "status": "error",
      "error_type": "IpBlocked",
      "video_id": "UNzCG3lw6O0",
+     "youtube_reachable": true,
+     "caption_endpoint_only": true,
      "hint": "<the script's own remedy for this error_type — always actionable>"
    }
    ```
    Branch on `status`:
-   - `success` / `cache_hit` → report it in the shape below. STOP here.
+   - `success` / `cache_hit` → report it in the shape below. STOP here. If `metadata_ok` is false
+     the transcript is intact but title and channel are empty — say so, do not present a nameless
+     file as complete.
    - `error` → read `references/troubleshooting.md`, find the branch for that `error_type`, and
-     report the cause and the remedy in one line each. Do NOT blind-retry: `IpBlocked` and
-     `TranscriptsDisabled` fail identically every time.
+     report the cause and the remedy in one line each. NEVER retry in a loop. On a blocked fetch,
+     read `caption_endpoint_only` first: when true, only captions are refused and
+     `youtube-screenshot` still works on that video.
 4. **Cold read only on demand.** If — and only if — the user asked for something that needs the
    words (a summary, a quote, an answer about the content), read the file now. For what to do with
    it, see `references/downstream.md`.
@@ -146,8 +154,11 @@ If the receipt is `MissingDependency`, run that and retry once. If pip refuses w
   the check. That flag exists for piping into another program, not for reading.
 - A cold read is a deliberate act with a real cost. NEVER do one in the same turn as the fetch
   unless the user asked for the content.
-- NEVER retry a blocked or disabled fetch. `IpBlocked`, `RequestBlocked`, `AgeRestricted` and
-  `TranscriptsDisabled` are states, not flakiness — retrying wastes time and deepens the ban.
+- `TranscriptsDisabled` and `AgeRestricted` are permanent states. NEVER retry them.
+- `IpBlocked` and `RequestBlocked` are usually rate limiting and do clear. Never retry in a LOOP —
+  that deepens the throttle — but one deliberate attempt after a real pause is legitimate. Check
+  `caption_endpoint_only` first: when it is true, `youtube-screenshot` still works on that video and
+  the user should be told so.
 - `index.md` is generated. Edits to it are erased on the next run.
 - Transcripts are the creator's work. Summarise and quote briefly with attribution; never reproduce
   a full transcript into chat, a document, or anywhere it would substitute for the video.

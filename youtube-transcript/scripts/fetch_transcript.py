@@ -20,7 +20,9 @@ import argparse
 import json
 import os
 import re
+import ssl
 import sys
+import urllib.parse
 import urllib.request
 from datetime import datetime, timezone
 from pathlib import Path
@@ -48,15 +50,38 @@ def extract_video_id(raw: str) -> str | None:
     return None
 
 
-def fetch_metadata(video_id: str) -> dict:
-    """Title and channel via oEmbed. Best effort — never fatal."""
-    url = f"https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v={video_id}&format=json"
+def _ssl_context():
+    """Framework Pythons on macOS ship without a usable CA store, so the system
+    default fails on ALL https. certifi arrives with requests, which
+    youtube-transcript-api already requires — no new dependency."""
     try:
-        with urllib.request.urlopen(url, timeout=10) as response:
-            data = json.load(response)
-        return {"title": data.get("title", ""), "channel": data.get("author_name", "")}
+        import certifi
+        return ssl.create_default_context(cafile=certifi.where())
     except Exception:
-        return {"title": "", "channel": ""}
+        return ssl.create_default_context()
+
+
+def oembed(video_id):
+    """Title/channel metadata. Returns None when the call itself failed."""
+    query = urllib.parse.urlencode(
+        {"url": "https://www.youtube.com/watch?v=" + video_id, "format": "json"}
+    )
+    try:
+        with urllib.request.urlopen(
+            "https://www.youtube.com/oembed?" + query, timeout=10, context=_ssl_context()
+        ) as response:
+            return json.load(response)
+    except Exception:
+        return None
+
+
+def fetch_metadata(video_id: str) -> dict:
+    """Best effort, but the failure is REPORTED. Silently returning empty strings
+    hid a completely broken call for an entire release."""
+    data = oembed(video_id)
+    if data is None:
+        return {"title": "", "channel": "", "ok": False}
+    return {"title": data.get("title", ""), "channel": data.get("author_name", ""), "ok": True}
 
 
 def group_snippets(snippets, window: int) -> list[tuple[int, str]]:
@@ -250,7 +275,7 @@ def main() -> int:
             language=f"{transcript.language} ({transcript.language_code})",
             generated=transcript.is_generated, snippets=len(transcript.snippets),
             duration_seconds=int(last.start + last.duration),
-            characters=len(document),
+            characters=len(document), metadata_ok=meta["ok"],
             proxy="webshare" if os.environ.get("YTT_WEBSHARE_USER") else
                   "generic" if (os.environ.get("YTT_PROXY_HTTP") or os.environ.get("YTT_PROXY_HTTPS"))
                   else "none",
@@ -261,6 +286,16 @@ def main() -> int:
     return 0
 
 
+def youtube_reachable(video_id: str) -> bool:
+    """Is YouTube itself reachable, or only the caption endpoint blocked?
+
+    oEmbed is a plain metadata endpoint, unrelated to timedtext. If it answers
+    while the transcript fetch is refused, the block is caption-specific and
+    everything else about this video still works from here.
+    """
+    return oembed(video_id) is not None
+
+
 def report_failure(error: Exception, yta, video_id: str, api=None) -> int:
     """Map a library exception to an actionable receipt and an exit code."""
     name = type(error).__name__
@@ -269,10 +304,17 @@ def report_failure(error: Exception, yta, video_id: str, api=None) -> int:
     unavailable = (yta.VideoUnavailable, yta.InvalidVideoId, yta.VideoUnplayable)
 
     if isinstance(error, blocked):
+        reachable = youtube_reachable(video_id)
+        if reachable:
+            hint = ("Only the CAPTION endpoint is blocked for this IP — YouTube itself answers "
+                    "fine, so youtube-screenshot still works on this video. Usually rate limiting "
+                    "that clears on its own. Wait, switch network, or set a proxy. Do not retry in "
+                    "a loop. See references/troubleshooting.md.")
+        else:
+            hint = ("YouTube is not reachable at all from here, not just captions. Check the "
+                    "network or VPN before blaming the skill. See references/troubleshooting.md.")
         receipt(status="error", error_type=name, video_id=video_id,
-                hint="YouTube refused the request from this IP. This is the most common failure. "
-                     "See references/troubleshooting.md — it needs a proxy or a different network, "
-                     "not a retry.")
+                youtube_reachable=reachable, caption_endpoint_only=reachable, hint=hint)
         return 3
 
     if isinstance(error, yta.NoTranscriptFound):

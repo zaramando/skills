@@ -5,38 +5,70 @@ states, not flakiness, and retrying changes nothing.
 
 ## `IpBlocked` / `RequestBlocked`
 
-The most common failure by far, and the one that looks least like a real error.
+The most common failure by far, and the receipt tells you which of two very different situations
+you are in. Read `caption_endpoint_only` before doing anything.
 
-YouTube refuses transcript requests from IPs it does not like. Datacentre ranges — AWS, GCP, Azure,
-most VPS providers — are blocked wholesale, and a residential IP can be blocked temporarily after a
-burst of requests. `list()` sometimes still succeeds while `fetch()` is blocked, which makes it look
-intermittent. It is not.
+### `caption_endpoint_only: true` — the usual case
 
-**Do NOT retry in a loop.** Repeated attempts deepen a temporary block.
+YouTube answers normally; only the **caption endpoint** refuses this IP. Everything else about the
+video works from this machine, which means:
 
-Three remedies, cheapest first:
+- `youtube-screenshot` will succeed on the very same video. Say so — otherwise the user reasonably
+  concludes their whole setup is broken.
+- The underlying HTTP status is typically **429 Too Many Requests**, i.e. rate limiting, not a
+  permanent ban. It clears on its own.
+- It is endpoint-level, not client-level. Switching yt-dlp `player_client` (tv, ios, android,
+  web_safari, mweb) hits the same 429 — verified, all five. Do not go looking for that workaround.
+- A yt-dlp subtitle fallback would NOT help either: it downloads captions from the same endpoint.
 
-1. **Different network.** If the machine is on a VPN or a cloud host, run from a normal residential
-   connection. This resolves it outright most of the time.
-2. **Wait.** A burst-triggered block on a residential IP typically clears on its own. Come back
-   later; do not sit in a retry loop.
-3. **Proxy.** Configure one through the environment — never as a flag, because credentials in argv
-   land in shell history and in process listings:
+Remedies, cheapest first:
+
+1. **Wait.** Rate limiting clears. Try again in a while — ONE deliberate retry after a real pause,
+   never a loop. A loop deepens the throttle.
+2. **Different network.** VPN off, or a different connection. Datacentre ranges are throttled
+   hardest, so a residential link usually works immediately.
+3. **Proxy**, configured through the environment — never as a flag, because credentials in argv land
+   in shell history and process listings:
 
    ```bash
-   # any HTTP(S) proxy
    export YTT_PROXY_HTTPS="http://user:pass@host:port"
-
    # or a Webshare residential account, which the library supports directly
    export YTT_WEBSHARE_USER="..."
    export YTT_WEBSHARE_PASS="..."
    ```
 
-   The user sets these, not the agent. Never ask for the values in chat, never write them into a
-   file, and never echo them back. A successful receipt reports `"proxy": "webshare" | "generic" |
-   "none"` so the mode is visible without exposing anything.
+   The user sets these, not the agent. Never ask for the values in chat, never write them to a file,
+   never echo them back. A successful receipt reports `"proxy": "webshare" | "generic" | "none"`, so
+   the mode is visible without exposing anything.
 
-## `ProxyError` / any `SSL*`
+### `caption_endpoint_only: false` — YouTube is unreachable
+
+Even plain metadata failed, so this is not about captions. Check the network and the VPN first. If
+the network is demonstrably fine, suspect the local TLS store — see the next section, which produces
+exactly this symptom.
+
+## `CERTIFICATE_VERIFY_FAILED`, or metadata that is always empty
+
+Not an `error_type`, which is what makes it slippery: the fetch reports `caption_endpoint_only:
+false`, or a successful transcript arrives with `metadata_ok: false` and an empty title.
+
+The python.org framework builds for macOS install without a usable CA store, so `urllib` fails on
+every https call while `requests` — which carries `certifi` — keeps working. The script now uses
+`certifi` for its own calls, so this should not recur; if it does, the machine has neither, and the
+fix is:
+
+```bash
+/Applications/Python\ 3.x/Install\ Certificates.command   # macOS python.org builds
+python3 -m pip install --user certifi
+```
+
+## `BadProxyConfig`
+
+Only one half of a Webshare credential pair is set. Both `YTT_WEBSHARE_USER` and
+`YTT_WEBSHARE_PASS` are required, or neither. Rejected before any network call, so nothing left the
+machine. The user fixes their own environment — never ask for the values.
+
+## `ProxyError` / any `SSL*` during a fetch
 
 The proxy failed before YouTube was reached, so this says nothing about the video. Check that the
 proxy is up and that `YTT_PROXY_HTTPS` / `YTT_WEBSHARE_*` are correct. If the proxy was meant to be
