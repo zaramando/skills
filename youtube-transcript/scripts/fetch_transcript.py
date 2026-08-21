@@ -14,6 +14,8 @@ Exit codes:
   5  missing dependency
 """
 
+from __future__ import annotations  # PEP 604 syntax on Python 3.9
+
 import argparse
 import json
 import os
