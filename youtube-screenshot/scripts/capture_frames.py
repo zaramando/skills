@@ -169,7 +169,7 @@ def build_contact_sheet(paths: list[Path], out_path: Path, columns: int) -> str:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="Capture frames from a YouTube video.")
-    parser.add_argument("target", help="YouTube URL or 11-character video id")
+    parser.add_argument("target", nargs="?", help="YouTube URL or 11-character video id")
     parser.add_argument("timestamps", nargs="+", help="e.g. 7:58 1:04:20 480")
     parser.add_argument("--out-dir", default="screenshots")
     parser.add_argument("--height", type=int, default=1080, help="max frame height; default 1080")
@@ -179,7 +179,19 @@ def main() -> int:
     parser.add_argument("--contact-sheet", action="store_true",
                         help="also tile every frame into one image")
     parser.add_argument("--columns", type=int, default=3, help="contact sheet columns; default 3")
-    args = parser.parse_args()
+    # YouTube ids use the base64url alphabet, so a legal id can start with "-".
+    # argparse would parse it as flags, so lift it out of argv first.
+    argv = list(sys.argv[1:])
+    leading = None
+    if argv and argv[0].startswith("-") and re.fullmatch(VIDEO_ID, argv[0]):
+        leading = argv.pop(0)
+    args = parser.parse_args(argv)
+    if leading:
+        args.target = leading
+    if not args.target:
+        receipt(status="error", error_type="BadTarget", target=None,
+                hint="No video given. Pass a YouTube URL or an 11-character video id.")
+        return 1
 
     missing = [tool for tool in ("yt-dlp", "ffmpeg", "ffprobe") if not shutil.which(tool)]
     if missing:

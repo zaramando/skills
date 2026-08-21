@@ -200,14 +200,25 @@ def build_proxy_config():
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="Fetch a YouTube transcript to disk.")
-    parser.add_argument("target", help="YouTube URL or 11-character video id")
+    parser.add_argument("target", nargs="?", help="YouTube URL or 11-character video id")
     parser.add_argument("--out-dir", default="transcripts", help="default: ./transcripts")
     parser.add_argument("--languages", default="es,en", help="comma-separated, in preference order")
     parser.add_argument("--group-seconds", type=int, default=30, help="paragraph window; default 30")
     parser.add_argument("--force", action="store_true", help="refetch even on a cache hit")
     parser.add_argument("--list-only", action="store_true", help="report available languages, fetch nothing")
     parser.add_argument("--stdout", action="store_true", help="also print the transcript (expensive)")
-    args = parser.parse_args()
+    # A legal YouTube id can start with "-"; argparse would read it as flags.
+    argv = list(sys.argv[1:])
+    leading = None
+    if argv and argv[0].startswith("-") and re.fullmatch(VIDEO_ID, argv[0]):
+        leading = argv.pop(0)
+    args = parser.parse_args(argv)
+    if leading:
+        args.target = leading
+    if not args.target:
+        receipt(status="error", error_type="BadTarget", target=None,
+                hint="No video given. Pass a YouTube URL or an 11-character video id.")
+        return 1
 
     video_id = extract_video_id(args.target)
     if not video_id:
