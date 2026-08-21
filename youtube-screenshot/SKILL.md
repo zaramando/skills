@@ -64,8 +64,9 @@ skips resolve entirely — the run costs milliseconds and no network call.
 
 ## Procedure
 
-1. **Collect the video and ALL timestamps** before running anything. If the user named four
-   moments, they go in one invocation. See the resolve cost above — this is the whole reason.
+1. **Collect the video and ALL timestamps** before running anything, separating them from any
+   surrounding prose into `<video>` and `<timestamps>` per the input contract. If the user named
+   four moments, all four go in ONE invocation — see the resolve cost above.
 2. **Run the script** from the directory where `screenshots/` should live:
    ```bash
    python3 scripts/capture_frames.py "<url>" 0:30 4:20 7:58 --contact-sheet
