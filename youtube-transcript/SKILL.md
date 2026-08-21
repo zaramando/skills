@@ -20,9 +20,19 @@ default — those are separate requests, and each one costs a cold read.
 
 ## Input contract
 
-The target arrives as `<target>https://www.youtube.com/watch?v=... or an 11-char id</target>`.
-Accepted shapes: `watch?v=`, `youtu.be/`, `/embed/`, `/shorts/`, `/live/`, or a bare id. If no
-target is present, ask for one and stop — never guess a video id.
+The target is usually a bare URL pasted into the message. It may also arrive wrapped as
+`<target>...</target>` when passed programmatically — treat both identically.
+
+Accepted shapes: `watch?v=`, `youtu.be/`, `/embed/`, `/shorts/`, `/live/`, or a bare 11-character
+id. Playlist and channel URLs are NOT supported; ask which video. If the message contains more than
+one video URL, ask which one — never fetch several on a guess. If none is present, ask and stop:
+never guess a video id, and never fetch a video the user did not name.
+
+## Tone
+
+Factual and terse. Report what the receipt says and stop. Do not speculate about a video's content
+before it has been read, do not soften an error into "it might have worked", and do not pad a
+one-line result into a paragraph.
 
 ## Leading words
 
@@ -57,8 +67,7 @@ history to restore.
    Useful flags: `--languages pt,en` (preference order, default `es,en`), `--force` (refetch over a
    cache hit), `--list-only` (report available languages, fetch nothing), `--out-dir <path>`,
    `--group-seconds N` (paragraph window, default 30).
-3. **Read the receipt, not the file.** It looks like this — a few hundred bytes whatever the
-   video's length:
+3. **Read the receipt, not the file.** On success:
    ```json
    {
      "status": "success",
@@ -74,11 +83,20 @@ history to restore.
      "hint": "Transcript written to disk. Read the file only if the task needs the words."
    }
    ```
+   On failure — this is the shape you will see most often:
+   ```json
+   {
+     "status": "error",
+     "error_type": "IpBlocked",
+     "video_id": "UNzCG3lw6O0",
+     "hint": "<the script's own remedy for this error_type — always actionable>"
+   }
+   ```
    Branch on `status`:
-   - `success` / `cache_hit` → report the path, title, language and duration to the user. STOP here.
-   - `error` → the receipt carries an actionable `hint`. Read `references/troubleshooting.md` and
-     follow the branch for that `error_type`. Do NOT blind-retry: `IpBlocked` and
-     `TranscriptsDisabled` will fail identically every time.
+   - `success` / `cache_hit` → report it in the shape below. STOP here.
+   - `error` → read `references/troubleshooting.md`, find the branch for that `error_type`, and
+     report the cause and the remedy in one line each. Do NOT blind-retry: `IpBlocked` and
+     `TranscriptsDisabled` fail identically every time.
 4. **Cold read only on demand.** If — and only if — the user asked for something that needs the
    words (a summary, a quote, an answer about the content), read the file now. For what to do with
    it, see `references/downstream.md`.
@@ -94,9 +112,15 @@ English (en, auto-generated) · 21m 14s · 412 snippets · fetched just now
 <one line: what you can ask for next>
 ```
 
-On a cache hit say so explicitly — the user should know no network call happened. On an error,
-report the `error_type` and the remedy in one line each. Never paste transcript content into the
-report.
+On a cache hit say so explicitly — the user should know no network call happened. On an error:
+
+```markdown
+No transcript — `IpBlocked`. YouTube refused the request from this machine's IP.
+Fix: run it from a residential connection, or set a proxy (see troubleshooting.md). Not a retry.
+```
+
+Never paste transcript content into the report, and never report a fetch as successful when the
+receipt says otherwise.
 
 ## First run
 
