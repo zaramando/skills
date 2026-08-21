@@ -1,4 +1,5 @@
-__pycache__/
 *.pyc
-transcripts/
+__pycache__/
+benchmark/
 screenshots/
+transcripts/
