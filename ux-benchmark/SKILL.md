@@ -124,7 +124,12 @@ apart.
    The order IS the safeguard. `not-in-product` is only available when `<observed>` records the
    surrounding flow stepping past that moment without it. If the source simply never got there,
    the verdict is `not-in-source`. A verdict written before its observation is a guess wearing a
-   finding's clothes. Then record it — never leave a cell open after looking:
+   finding's clothes.
+
+   **Read `references/worked-example.md` before your first classification of the run**, and again
+   whenever a frame seems to satisfy two spine steps at once or none. It traces this step on a real
+   cell and names the wrong verdict that feels right. Then record it — never leave a cell open
+   after looking:
    ```bash
    python3 scripts/benchmark.py --dir <ws> add --competitor yape --step simulador \
      --file <ws>/screenshots/T4QIfNC8xgM/00-03-00.png --source T4QIfNC8xgM --at 00:03:00
@@ -138,44 +143,6 @@ apart.
     coverage you report is the grid's, not your memory of it. Then, in order: the counts, the
     grid, and only last the `<conclusion>` — which may rest on `screen` and `not-in-product`
     cells and on nothing else. Stop there; do not propose a redesign.
-
-## Worked example — one screen, two spine steps
-
-The case that decides whether the grid is trustworthy. Bootstrap fixed the spine as
-`... simulador · cuotas ...`, assuming that choosing an amount and choosing a number of instalments
-are separate moments. Yape puts both on one screen.
-
-Step 9 run properly, on the `cuotas` cell:
-
-```
-<observed>  frame 00:01:50 of KCDgyT0Glqw — "¿Cuánto necesitas?" header, monto input at
-            S/2,000 over a S/100–S/6,470 range, and below it four instalment chips 18/12/9/6
-<slot>      cuotas — the chips ARE the instalment choice, sharing a screen with simulador
-<verdict>   screen
-```
-
-**The wrong verdict, and why it is reachable** — `cuotas` marked `not-in-product`, on the reasoning
-that Yape has no separate instalments *screen*. Writing the verdict first makes it feel right: there
-is no such screen. But `<observed>` records the chips on the frame, so the step is not absent —
-it is merged. That cell would put "Yape no ofrece elección de cuotas" into a `<conclusion>`, which
-is false. `not-in-product` means the step is absent, not that it shares a screen.
-
-**The right record** — both cells hold a screen: the same file, the same timestamp, and the merge
-noted.
-
-```bash
-python3 scripts/benchmark.py --dir <ws> add --competitor yape --step simulador \
-  --file <ws>/screenshots/KCDgyT0Glqw/00-01-50.png --source KCDgyT0Glqw --at 00:01:50 \
-  --note "¿Cuánto necesitas? monto S/2,000, rango S/100-S/6,470"
-python3 scripts/benchmark.py --dir <ws> add --competitor yape --step cuotas \
-  --file <ws>/screenshots/KCDgyT0Glqw/00-01-50.png --source KCDgyT0Glqw --at 00:01:50 \
-  --note "Mismo screen que simulador: cuotas 18/12/9/6, sin navegación intermedia"
-```
-
-The merge is the finding, and it belongs in `findings.md` — Yape collapses two spine steps into one
-screen, which is a real product difference and only became visible because the spine kept the steps
-apart. A product that merges or reorders steps is a finding, never a reason to edit the spine; see
-`references/flow-spine.md`.
 
 ## Bootstrap (first run only)
 
@@ -244,6 +211,8 @@ exists to prevent.
 - `references/flow-spine.md` — read at Bootstrap step 2, or whenever a step name does not fit.
 - `references/sourcing.md` — read at procedure step 3, every time, before searching.
   Brand-not-category, and walkthrough-vs-spot.
+- `references/worked-example.md` — read at procedure step 9, before the run's first classification,
+  and whenever a frame fits two spine steps or none. The `screen` vs `not-in-product` call, traced.
 - `references/comparing.md` — read at procedure step 10, before writing anything into `findings.md`.
 
 ## CRITICAL REMINDERS
