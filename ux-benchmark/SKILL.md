@@ -94,9 +94,12 @@ apart.
    python3 ../youtube-search/scripts/search_youtube.py --min-seconds 120 \
      "Yape negocios prestamo como solicitar" "Yape credito paso a paso 2025"
    ```
-4. **Judge the candidates.** Walkthrough or spot, and on the borrower's side of the transaction, in
-   the right country. The script ranks but never picks — that choice is yours, from the title tells
-   in `references/sourcing.md`.
+4. **Judge the candidates — tells first, verdict last.** The script ranks but never picks. For each
+   candidate you seriously consider, emit these three in order and never the reverse:
+   `<tells>` what the title, channel and duration indicate · `<audience>` which side of the
+   transaction and which country · `<kind>` exactly one of `walkthrough` / `spot` / `mixed`.
+   The tells in `references/sourcing.md` decide the kind. A kind chosen first and justified
+   afterwards is how a brand spot enters the grid as evidence.
 5. **Record the source verdict**, including what it does NOT show:
    ```bash
    python3 scripts/benchmark.py --dir <ws> source --competitor yape --id T4QIfNC8xgM \
@@ -111,7 +114,17 @@ apart.
    belongs to, and which steps no frame covers.
 8. **Re-capture precisely** — only at the timestamps you actually identified in step 7, never on
    spec.
-9. **Record every cell.** A screen, or a gap with its cause. Never leave a cell open after looking:
+9. **Classify every cell — observe, place, then rule.** This is where the skill's whole distinction
+   is won or lost, so the order is fixed. For each cell you looked at, emit:
+   - `<observed>` what is actually on the frame — labels, amounts, field types, controls. When no
+     frame covers the cell, what the source showed at that point in the flow instead.
+   - `<slot>` the spine step it satisfies, or none.
+   - `<verdict>` exactly one of `screen` · `not-in-product` · `not-in-source`.
+
+   The order IS the safeguard. `not-in-product` is only available when `<observed>` records the
+   surrounding flow stepping past that moment without it. If the source simply never got there,
+   the verdict is `not-in-source`. A verdict written before its observation is a guess wearing a
+   finding's clothes. Then record it — never leave a cell open after looking:
    ```bash
    python3 scripts/benchmark.py --dir <ws> add --competitor yape --step simulador \
      --file <ws>/screenshots/T4QIfNC8xgM/00-03-00.png --source T4QIfNC8xgM --at 00:03:00
@@ -121,7 +134,10 @@ apart.
 10. **Compare.** `sheet --step <name>` or `--all` tiles the competitors for a step into one image.
     Open the SHEET, not the individual screens. Append what you see to `findings.md` — read
     `references/comparing.md` before writing.
-11. **Report the grid and stop.** Coverage first, findings second. Say what is still open.
+11. **Report the grid and stop.** Re-read `status` before writing a single conclusion, so the
+    coverage you report is the grid's, not your memory of it. Then, in order: the counts, the
+    grid, and only last the `<conclusion>` — which may rest on `screen` and `not-in-product`
+    cells and on nothing else. Stop there; do not propose a redesign.
 
 ## Worked example — one screen, two spine steps
 
@@ -129,16 +145,23 @@ The case that decides whether the grid is trustworthy. Bootstrap fixed the spine
 `... simulador · cuotas ...`, assuming that choosing an amount and choosing a number of instalments
 are separate moments. Yape puts both on one screen.
 
-**Input** — the frame at `00:01:50` of `KCDgyT0Glqw`: a "¿Cuánto necesitas?" header, a monto input
-showing S/2,000 over a S/100–S/6,470 range, and below it four instalment chips (18/12/9/6).
+Step 9 run properly, on the `cuotas` cell:
 
-**Wrong output** — a screen for `simulador`, and `cuotas` marked `--cause not-in-product`. The
-product manifestly HAS instalment selection; it is right there on the frame. That cell would put
-"Yape no ofrece elección de cuotas" into a conclusion, which is false. `not-in-product` means the
-step is absent, not that it shares a screen.
+```
+<observed>  frame 00:01:50 of KCDgyT0Glqw — "¿Cuánto necesitas?" header, monto input at
+            S/2,000 over a S/100–S/6,470 range, and below it four instalment chips 18/12/9/6
+<slot>      cuotas — the chips ARE the instalment choice, sharing a screen with simulador
+<verdict>   screen
+```
 
-**Right output** — both cells hold a screen: the same file, the same timestamp, and the merge
-recorded in the notes.
+**The wrong verdict, and why it is reachable** — `cuotas` marked `not-in-product`, on the reasoning
+that Yape has no separate instalments *screen*. Writing the verdict first makes it feel right: there
+is no such screen. But `<observed>` records the chips on the frame, so the step is not absent —
+it is merged. That cell would put "Yape no ofrece elección de cuotas" into a `<conclusion>`, which
+is false. `not-in-product` means the step is absent, not that it shares a screen.
+
+**The right record** — both cells hold a screen: the same file, the same timestamp, and the merge
+noted.
 
 ```bash
 python3 scripts/benchmark.py --dir <ws> add --competitor yape --step simulador \
@@ -201,12 +224,19 @@ The full set: `NoWorkspace`, `UnknownStep`, `UnknownCompetitor`, `UnknownCell`,
 | simulador | ✓ | ✓ | ? sin fuente |
 | cuotas | ✓ | ✗ n/a | ? sin fuente |
 
-**Diferencia de producto:** <what a `not-in-product` cell reveals>
+<conclusion>
+**Diferencia de producto:** <what a `not-in-product` cell reveals, cited by competitor,
+step, source id and timestamp>
+</conclusion>
+
+Pendiente — NO concluible:
 **Hueco de evidencia:** <what `not-in-source` cells still need>
 **Abierto:** <cells nobody has looked at>
 ```
 
-Always separate the two kinds of gap in the report. Collapsing them is the mistake this whole skill
+The tag is not decoration: only `screen` and `not-in-product` cells may appear inside
+`<conclusion>`. Everything a `not-in-source` or an open cell supports is pending work, and lives
+outside it. Always separate the two kinds of gap. Collapsing them is the mistake this whole skill
 exists to prevent.
 
 ## References
