@@ -1,6 +1,6 @@
 # Reading the grid
 
-Read at step 6, before writing anything into `findings.md`.
+Read at procedure step 10, before writing anything into `findings.md`.
 
 ## Compare through the sheet, not the screens
 
@@ -8,7 +8,7 @@ Read at step 6, before writing anything into `findings.md`.
 right in spec order. Open that. Opening each screen separately costs a look per competitor and gives
 you no alignment — the whole point is seeing the same moment across products at once.
 
-## The three cell states say different things
+## The four cell states say different things
 
 | Cell | Means | Belongs in a conclusion |
 |------|-------|-------------------------|

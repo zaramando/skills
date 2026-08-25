@@ -18,8 +18,21 @@ disable-model-invocation: true
 Turns scattered screenshots into a comparison. It does NOT judge which product is better — it
 assembles the evidence and makes the holes in that evidence visible.
 
-Orchestrates three sibling skills: `youtube-search` finds a source, `youtube-screenshot` captures
-frames, and this one assigns each frame to a step and keeps the grid.
+Drives two sibling skills' scripts and keeps the grid: `youtube-search` finds a source,
+`youtube-screenshot` captures frames, and this one assigns each frame to a step.
+
+Call those scripts with **Bash, never the `Skill` tool**. Both siblings set
+`disable-model-invocation: true`, so invoking them by name from inside this procedure fails with
+`Unknown skill` — the flag exists to keep them out of ambient context, and it blocks programmatic
+invocation too. Paths are relative to this skill's directory:
+
+```
+../youtube-search/scripts/search_youtube.py       # queries -> ranked candidates, picks nothing
+../youtube-screenshot/scripts/capture_frames.py   # id + timestamps -> PNGs, optional contact sheet
+```
+
+Their judgment lives HERE, not there: `references/sourcing.md` carries brand-not-category and
+walkthrough-vs-spot for this skill's purposes, so you do not need the siblings' own references.
 
 ## Input contract
 
@@ -52,8 +65,13 @@ honestly — an incomplete grid presented as a finished benchmark is the only re
 
 Stateful. Every run reads this back before doing anything; a fresh context remembers nothing.
 
+`<ws>` belongs to the investigation, NOT to this skill — put it in the user's own project and pass
+`--dir <ws>` explicitly on every call. The script defaults to `./benchmark`, which silently picks up
+whatever workspace happens to sit in the current directory; naming it is how two investigations stay
+apart.
+
 ```
-benchmark/
+<ws>/
   benchmark.json   # the state. Machine-owned
   mission.md       # the flow, WHY it matters, what "done" looks like. Human-owned
   coverage.md      # generated grid. NEVER hand-edit — regenerated on every write
@@ -70,26 +88,71 @@ benchmark/
    `notes.md`. If the receipt is `NoWorkspace`, go to Bootstrap.
 2. **Pick the next open cell.** The status receipt lists `open_cells` and `unsourced` competitors.
    Work one competitor at a time — a competitor half-sourced across three sessions is how grids rot.
-3. **Source it.** Use `youtube-search` with BRAND queries, never category queries. Judge each
-   candidate walkthrough-vs-spot before capturing anything — see `references/sourcing.md`. Record
-   the verdict:
+3. **Search.** Read `references/sourcing.md` first, every time. Two or more BRAND phrasings, never
+   a category query. `--min-seconds 120` drops the ad spots:
+   ```bash
+   python3 ../youtube-search/scripts/search_youtube.py --min-seconds 120 \
+     "Yape negocios prestamo como solicitar" "Yape credito paso a paso 2025"
+   ```
+4. **Judge the candidates.** Walkthrough or spot, and on the borrower's side of the transaction, in
+   the right country. The script ranks but never picks — that choice is yours, from the title tells
+   in `references/sourcing.md`.
+5. **Record the source verdict**, including what it does NOT show:
    ```bash
    python3 scripts/benchmark.py --dir <ws> source --competitor yape --id T4QIfNC8xgM \
      --kind walkthrough --shows "flujo in-app completo"
    ```
-4. **Locate the steps.** Capture a survey with `youtube-screenshot --contact-sheet`, look at the
-   sheet ONCE, and map frames to spine steps. Re-capture at precise timestamps only for the steps
-   you actually identified.
-5. **Record every cell.** A screen, or a gap with its cause. Never leave a cell open after looking:
+6. **Capture a survey.** Coarse timestamps across the whole video, tiled into one sheet:
+   ```bash
+   python3 ../youtube-screenshot/scripts/capture_frames.py T4QIfNC8xgM \
+     --contact-sheet --out-dir <ws>/screenshots/T4QIfNC8xgM 0:10 0:30 1:00 1:30 2:00 2:30 3:00
+   ```
+7. **Map frames to spine steps.** Open the contact sheet ONCE. Decide which spine step each frame
+   belongs to, and which steps no frame covers.
+8. **Re-capture precisely** — only at the timestamps you actually identified in step 7, never on
+   spec.
+9. **Record every cell.** A screen, or a gap with its cause. Never leave a cell open after looking:
    ```bash
    python3 scripts/benchmark.py --dir <ws> add --competitor yape --step simulador \
-     --file screenshots/T4QIfNC8xgM/00-03-00.png --source T4QIfNC8xgM --at 00:03:00
+     --file <ws>/screenshots/T4QIfNC8xgM/00-03-00.png --source T4QIfNC8xgM --at 00:03:00
    python3 scripts/benchmark.py --dir <ws> gap --competitor mibanco --step cuotas \
      --cause not-in-product --note "elige día de pago mensual, no número de cuotas"
    ```
-6. **Compare.** `sheet --step <name>` or `--all` tiles the competitors for a step into one image.
-   Open the SHEET, not the individual screens. Append what you see to `findings.md`.
-7. **Report the grid and stop.** Coverage first, findings second. Say what is still open.
+10. **Compare.** `sheet --step <name>` or `--all` tiles the competitors for a step into one image.
+    Open the SHEET, not the individual screens. Append what you see to `findings.md` — read
+    `references/comparing.md` before writing.
+11. **Report the grid and stop.** Coverage first, findings second. Say what is still open.
+
+## Worked example — one screen, two spine steps
+
+The case that decides whether the grid is trustworthy. Bootstrap fixed the spine as
+`... simulador · cuotas ...`, assuming that choosing an amount and choosing a number of instalments
+are separate moments. Yape puts both on one screen.
+
+**Input** — the frame at `00:01:50` of `KCDgyT0Glqw`: a "¿Cuánto necesitas?" header, a monto input
+showing S/2,000 over a S/100–S/6,470 range, and below it four instalment chips (18/12/9/6).
+
+**Wrong output** — a screen for `simulador`, and `cuotas` marked `--cause not-in-product`. The
+product manifestly HAS instalment selection; it is right there on the frame. That cell would put
+"Yape no ofrece elección de cuotas" into a conclusion, which is false. `not-in-product` means the
+step is absent, not that it shares a screen.
+
+**Right output** — both cells hold a screen: the same file, the same timestamp, and the merge
+recorded in the notes.
+
+```bash
+python3 scripts/benchmark.py --dir <ws> add --competitor yape --step simulador \
+  --file <ws>/screenshots/KCDgyT0Glqw/00-01-50.png --source KCDgyT0Glqw --at 00:01:50 \
+  --note "¿Cuánto necesitas? monto S/2,000, rango S/100-S/6,470"
+python3 scripts/benchmark.py --dir <ws> add --competitor yape --step cuotas \
+  --file <ws>/screenshots/KCDgyT0Glqw/00-01-50.png --source KCDgyT0Glqw --at 00:01:50 \
+  --note "Mismo screen que simulador: cuotas 18/12/9/6, sin navegación intermedia"
+```
+
+The merge is the finding, and it belongs in `findings.md` — Yape collapses two spine steps into one
+screen, which is a real product difference and only became visible because the spine kept the steps
+apart. A product that merges or reorders steps is a finding, never a reason to edit the spine; see
+`references/flow-spine.md`.
 
 ## Bootstrap (first run only)
 
@@ -146,9 +209,9 @@ exists to prevent.
 ## References
 
 - `references/flow-spine.md` — read at Bootstrap step 2, or whenever a step name does not fit.
-- `references/sourcing.md` — read at procedure step 3, every time. Brand-not-category, and
-  walkthrough-vs-spot.
-- `references/comparing.md` — read at step 6, before writing anything into `findings.md`.
+- `references/sourcing.md` — read at procedure step 3, every time, before searching.
+  Brand-not-category, and walkthrough-vs-spot.
+- `references/comparing.md` — read at procedure step 10, before writing anything into `findings.md`.
 
 ## CRITICAL REMINDERS
 

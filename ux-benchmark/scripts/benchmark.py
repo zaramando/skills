@@ -19,7 +19,7 @@ import sys
 from pathlib import Path
 
 STATE = "benchmark.json"
-GAP_CAUSES = ("not-in-source", "not-in-product", "unknown")
+GAP_CAUSES = ("not-in-source", "not-in-product")
 
 
 def receipt(**kwargs) -> None:
@@ -68,8 +68,7 @@ def write_views(root: Path, state: dict) -> None:
                 row.append(f"[✓]({entry['path']})")
             else:
                 row.append({"not-in-product": "✗ n/a",
-                            "not-in-source": "? sin fuente",
-                            "unknown": "?"}[entry["cause"]])
+                            "not-in-source": "? sin fuente"}.get(entry["cause"], "?"))
         lines.append(f"| {step} | " + " | ".join(row) + " |")
     lines += ["", "Legend: ✓ captured · ✗ n/a the product has no such step ·",
               "? sin fuente the source did not show it · · not looked at yet.",
