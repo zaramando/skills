@@ -1,4 +1,4 @@
-# Step 9 — pruning
+# Step 10 — pruning
 
 The final pass. Everything the skill is better without.
 

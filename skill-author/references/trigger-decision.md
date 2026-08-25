@@ -1,7 +1,7 @@
 # Step 2 — the trigger decision
 
-Every skill is invoked one of two ways. The default is model-invoked, which means most skills have
-this decided *for* them. Decide it.
+Invocation has two independent axes: whether the model may auto-load the skill, and whether the human
+may run it. Both default to permitted, which means most skills have this decided *for* them. Decide it.
 
 ## The two modes
 
@@ -11,6 +11,20 @@ description is a **context pointer**: it does not do the work, it advertises tha
 
 **User-invoked.** `disable-model-invocation: true`. Nothing enters the agent's context until the
 human names the skill. The skill sits on disk, invisible, until invoked.
+
+## The second axis: who is allowed to invoke it
+
+`disable-model-invocation` controls whether the *model* can auto-load the skill. A separate field,
+`user-invocable`, controls whether the *human* can run it with `/name`. They are independent —
+this is a 2x2 matrix, not one binary:
+
+| | `user-invocable: true` (default) | `user-invocable: false` |
+|---|---|---|
+| **model-invoked (default)** | either side can trigger it | only the model triggers it — hidden from the `/` menu |
+| **`disable-model-invocation: true`** | only the human triggers it, via `/name` | neither can — dead skill, don't ship this |
+
+Set `user-invocable: false` for background knowledge that should never be a deliberate human action —
+the human has no reason to type `/name`, only the agent decides mid-task that it applies.
 
 ## The costs are symmetric
 
@@ -51,6 +65,11 @@ Triggers describe **intents**, never file events.
 
 For model-invoked skills the description is the only thing the agent sees before deciding. It must
 answer: what does this do, what does it produce, and when does it apply.
+
+`description` and `when_to_use` are concatenated and truncated together at **1536 characters** in
+the listing. If the trigger needs more room — extra phrasings, worked examples of matching
+requests — put that overflow in `when_to_use` rather than stretching `description` past the point
+where a human skimming the list can still parse it.
 
 ```
 BAD

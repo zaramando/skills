@@ -1,14 +1,14 @@
 ---
 name: skill-author
 description: >
-  Creates a new agent skill, or rebuilds an existing one, applying the five-checkpoint discipline —
-  trigger, state model, structure, steering, pruning — on top of Anthropic's 10-part prompt
+  Creates a new agent skill, or rebuilds an existing one, applying the six-checkpoint discipline —
+  trigger, frontmatter, state model, structure, steering, pruning — on top of Anthropic's 10-part prompt
   framework. Produces a minimal SKILL.md plus a references/ tree, then self-audits it with
   prompt-review. Invoke explicitly: /skill-author <what the skill should do>.
 license: Apache-2.0
 metadata:
   author: zaramando
-  version: "1.0"
+  version: "1.4"
 allowed-tools: Read, Write, Edit, Grep, Glob
 disable-model-invocation: true
 ---
@@ -50,7 +50,7 @@ of its own — compact terms that carry a whole concept, that the agent picks up
 
 ## Procedure
 
-Follow in order. Do NOT open a file for writing before step 5 — a skill drafted while typing becomes
+Follow in order. Do NOT open a file for writing before step 6 — a skill drafted while typing becomes
 a skill shaped by typing.
 
 1. **Scope it.** State in one sentence what the skill does, what it emits, and who invokes it. Get
@@ -63,22 +63,31 @@ a skill shaped by typing.
    workspace tree now, before the steps, because re-hydration becomes step one of its procedure.
 4. **Draft the steps, and only the steps.** Ordered, atomic, each one an action with an observable
    result. No background, no examples, no templates yet. If a step contains "and also", split it.
-5. **Branch analysis.** Go through everything you were tempted to include. Anything needed only on a
+5. **Decide the frontmatter.** Read `references/frontmatter.md` and walk it field by field. Every
+   omission must be a decision, not an inherited default. Step 2 already fixed
+   `description`, `disable-model-invocation` and `user-invocable` — carry those over, do not
+   re-decide them. The rest is now answerable because the steps exist: `allowed-tools`, the narrowest
+   set that actually runs the steps you just drafted; `context: fork` with `agent` and `background`
+   if the work is heavy enough to deserve an isolated subagent — see `references/skill-template.md`;
+   `when_to_use` if the trigger needs phrases the `description` should not carry, both under the same
+   1536-char cap; `metadata.version`, starting at `"1.0"`.
+6. **Branch analysis.** Go through everything you were tempted to include. Anything needed only on a
    condition — a specific stack, a specific input shape, a failure mode — moves to
    `references/<name>.md` behind a context pointer. What remains in `SKILL.md` is what EVERY run
-   needs. Target: under 150 lines.
-6. **Name the leading words.** For each concept the skill explains in more than two sentences, coin
+   needs. The worked before/after in `references/skill-template.md` shows the cut being made.
+   Target: under 150 lines.
+7. **Name the leading words.** For each concept the skill explains in more than two sentences, coin
    a term, define it once, and then use that exact term in the procedure and the output format.
    A term defined and never reused steers nothing — delete it or use it.
-7. **Protect the legwork.** Read `references/steering.md`. If the skill has a discovery phase and a
+8. **Protect the legwork.** Read `references/steering.md`. If the skill has a discovery phase and a
    deliverable phase, make the discovery output a required artifact, or split it into a separate
    skill. Design the output format so it cannot be filled in without doing the work.
-8. **Content pass.** Walk the 10 parts (role, tone, background, dynamic content, instructions,
+9. **Content pass.** Walk the 10 parts (role, tone, background, dynamic content, instructions,
    examples, critical reminders, XML tags, pre-filling, reasoning order) over the draft. Put the
    critical rules at the END, in a `## CRITICAL REMINDERS` section.
-9. **Prune.** Read `references/pruning.md` and run the deletion test on every line. Kill duplicated
-   lists — one source of truth per concept, always.
-10. **Self-audit.** Run `prompt-review` on the file you just wrote. Fix everything it reports before
+10. **Prune.** Read `references/pruning.md` and run the deletion test on every line. Kill duplicated
+    lists — one source of truth per concept, always.
+11. **Self-audit.** Run `prompt-review` on the file you just wrote. Fix everything it reports before
     handing the skill over. A skill-authoring skill that ships an unaudited skill has failed.
 
 ## File layout
@@ -109,15 +118,8 @@ A stateful skill additionally declares its **workspace** — the tree it creates
 directory — inside `SKILL.md`. The workspace is not part of the skill package; it is what the skill
 writes. Never conflate the two.
 
-`SKILL.md` frontmatter:
-
-| Field | Rule |
-|-------|------|
-| `name` | kebab-case, matches the directory name exactly |
-| `description` | For model-invoked skills this IS the trigger — see `references/trigger-decision.md`. For user-invoked skills it is documentation for the human |
-| `allowed-tools` | The narrowest set that lets the procedure run. An audit skill that writes files is a design error |
-| `disable-model-invocation` | `true` for deliberate actions. Its absence must be a decision, not a default |
-| `metadata.version` | Bump on every structural change |
+Every `SKILL.md` frontmatter field, with the rule for setting it, lives in
+`references/frontmatter.md` — read it at step 5.
 
 ## References
 
@@ -125,11 +127,13 @@ writes. Never conflate the two.
   description that works as a context pointer.
 - `references/state-model.md` — step 3. Stateful vs stateless, workspace design, re-hydration,
   artifact formats, and the exit posture. Read in full when the skill turns out to be stateful.
-- `references/steering.md` — steps 6 and 7. Leading words, legwork protection, and formats that
+- `references/frontmatter.md` — step 5. Every frontmatter field, what it does, and when to set it.
+- `references/skill-template.md` — steps 5 and 6. The skeletons (stateless and stateful) to start
+  from, the `context: fork` frontmatter for running the procedure in an isolated subagent, plus a worked
+  before/after reducing a 340-line single file to 90 lines and three references.
+- `references/steering.md` — steps 7 and 8. Leading words, legwork protection, and formats that
   enforce their own process.
-- `references/pruning.md` — step 9. DRY, sediment, no-ops, the deletion test.
-- `references/skill-template.md` — the skeletons (stateless and stateful) to start from, plus a
-  worked before/after reducing a 340-line single file to 90 lines and three references.
+- `references/pruning.md` — step 10. DRY, sediment, no-ops, the deletion test.
 
 ## CRITICAL REMINDERS
 

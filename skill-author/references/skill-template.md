@@ -8,6 +8,10 @@ name: <kebab-case, matches the directory>
 description: >
   <What it does, what it emits, when it applies. For model-invoked skills this IS the trigger.
   For user-invoked skills, state the invocation: /name <argument>.>
+when_to_use: >
+  <Optional. Extra trigger phrases or examples, same 1536-char cap as description combined.>
+argument-hint: "<[arg-name]>"          # optional, autocomplete hint for /name
+arguments: <arg-name ...>              # optional, named args substituted as $arg-name in the body
 license: Apache-2.0
 metadata:
   author: <you>
@@ -83,6 +87,22 @@ N. **Write state back.** Append the outcome to `records/`, update `notes.md` if 
 ## Exit condition
 
 <What "done" looks like, and where the user goes afterwards.>
+````
+
+## Frontmatter — running the procedure in a forked subagent
+
+Use when the skill's work is heavy enough to warrant an isolated context — long research, a
+multi-step audit — instead of running inline in the caller's turn:
+
+````markdown
+---
+name: <kebab-case, matches the directory>
+description: >
+  <...>
+context: fork
+agent: general-purpose        # which subagent type runs the procedure
+background: true              # default; set false to block for the result in the same turn
+---
 ````
 
 ---

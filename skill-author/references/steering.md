@@ -1,4 +1,4 @@
-# Steps 6 and 7 — steering
+# Steps 7 and 8 — steering
 
 Steering is the gap between a skill that *describes* good behavior and a skill that *produces* it.
 Most weak skills are perfectly correct documents that change nothing about what the agent does.
