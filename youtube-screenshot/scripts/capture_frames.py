@@ -32,6 +32,7 @@ URL_PATTERNS = [
     rf"(?:youtube\.com/(?:embed|shorts|live|v)/)({VIDEO_ID})",
 ]
 BLACK_THRESHOLD = 8.0  # mean luma below this is an effectively black frame
+CELL_WIDTH = 480       # width of one cell on a contact sheet
 
 
 def receipt(**kwargs) -> None:
@@ -146,19 +147,57 @@ def grab(stream_url: str, seconds: int, out_path: Path, quality: int) -> str:
     return ""
 
 
+def frame_size(path: Path) -> tuple[int, int] | None:
+    """(width, height) of an image on disk. None if ffprobe cannot read it."""
+    try:
+        result = subprocess.run(
+            ["ffprobe", "-v", "error", "-select_streams", "v:0",
+             "-show_entries", "stream=width,height", "-of", "csv=p=0:s=x", str(path)],
+            capture_output=True, text=True, timeout=30,
+        )
+        width, height = result.stdout.strip().split("x")[:2]
+        # A corrupt file makes ffprobe report 0x0 rather than fail, and a zero
+        # width divides by zero when the cell is sized. Treat it as unreadable.
+        if int(width) <= 0 or int(height) <= 0:
+            return None
+        return int(width), int(height)
+    except Exception:
+        return None
+
+
 def build_contact_sheet(paths: list[Path], out_path: Path, columns: int) -> str:
-    """Tile every frame into one image, so N frames cost one look, not N."""
+    """Tile every frame into one image, so N frames cost one look, not N.
+
+    Every frame is letterboxed into an identical cell FIRST. `concat` refuses
+    to run unless all its inputs share one resolution, and a directory holding
+    frames from two different videos — a re-capture at another --height, or
+    parallel captures sharing an --out-dir — breaks that silently.
+
+    The cell is sized from the frames themselves, so the usual case (frames
+    from one video, already identical) letterboxes nothing and looks the same
+    as it always did.
+    """
     if not paths:
         return "no frames to tile"
+    sizes = [frame_size(path) for path in paths]
+    unreadable = [str(p) for p, s in zip(paths, sizes) if s is None]
+    if unreadable:
+        return f"could not read frame dimensions: {', '.join(unreadable[:3])}"
+    cell_height = max(round(CELL_WIDTH * h / w) for w, h in sizes)
+    cell_height += cell_height % 2  # keep it even; some encoders insist
     rows = (len(paths) + columns - 1) // columns
     command = ["ffmpeg", "-hide_banner", "-loglevel", "error"]
     for path in paths:
         command += ["-i", str(path)]
-    streams = "".join(f"[{i}:v]" for i in range(len(paths)))
+    chains = ";".join(
+        f"[{i}:v]scale={CELL_WIDTH}:{cell_height}:force_original_aspect_ratio=decrease,"
+        f"pad={CELL_WIDTH}:{cell_height}:(ow-iw)/2:(oh-ih)/2:white[v{i}]"
+        for i in range(len(paths)))
+    streams = "".join(f"[v{i}]" for i in range(len(paths)))
     command += [
         "-filter_complex",
-        f"{streams}concat=n={len(paths)}:v=1:a=0[c];"
-        f"[c]scale=480:-1,tile={columns}x{rows}:padding=6:color=white[out]",
+        f"{chains};{streams}concat=n={len(paths)}:v=1:a=0[c];"
+        f"[c]tile={columns}x{rows}:padding=6:color=white[out]",
         "-map", "[out]", "-frames:v", "1", "-y", str(out_path),
     ]
     result = subprocess.run(command, capture_output=True, text=True, timeout=180)
