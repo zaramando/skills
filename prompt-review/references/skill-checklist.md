@@ -7,7 +7,7 @@ it remembers, how it is laid out, how it steers, and what dead weight it carries
 Sources: "The Missing Manual: How to Write Great Skills" and "Learn anything with the /teach skill",
 Matt Pocock.
 
-Five checkpoints. Each gets a verdict: **PASS** / **WEAK** / **FAIL**. Do not invent a numeric score
+Six checkpoints. Each gets a verdict: **PASS** / **WEAK** / **FAIL**. Do not invent a numeric score
 here — the 10-part score already carries the numbers, and a second one is noise.
 
 ## Leading words for this pass
@@ -48,7 +48,30 @@ invoke it by name; drop the ambient trigger from the description."*
 
 ---
 
-## 2. State model
+## 2. Frontmatter completeness
+
+Trigger (checkpoint 1) judges one axis of frontmatter — whether the invocation mode was chosen on
+purpose. This checkpoint covers the rest of the fields: whether they exist, whether they are
+mutually consistent, and whether they match what the procedure actually does.
+
+| Check | Fails when |
+|-------|-----------|
+| Is there a `description`? | Missing, and the fallback (the first paragraph of the body) reads as a generic intro rather than a pointer that tells the agent when to reach for the skill |
+| Is `user-invocable` a deliberate, independent axis? | It gets treated as a synonym of `disable-model-invocation` instead of the orthogonal 2x2 it is: (a) model-invoked + invocable — default, both paths open; (b) model-invoked + NOT invocable — hidden from `/`, reachable only by auto-load; (c) `disable-model-invocation` + invocable — the deliberate `/name`-only case; (d) `disable-model-invocation` + NOT invocable — no human path and no automatic path, almost certainly a mistake |
+| Are `allowed-tools`/`disallowed-tools` the narrowest set that runs the procedure? | Tools are pre-approved that the body never calls, or the body calls a tool that was never pre-approved, so every run stalls on a permission prompt |
+| Does heavy or isolable work use `context: fork`? | The procedure is many tool calls deep and would benefit from a clean, disposable context, but runs inline in the caller's context — or it does declare `context: fork` without an `agent` type, leaving the subagent selection undefined |
+| Does `description` + `when_to_use` fit the cap? | The two fields combined approach or exceed 1536 characters — sum the actual lengths, don't eyeball it |
+
+**Verdict FAIL if:** `user-invocable` and `disable-model-invocation` are collapsed into one switch, or
+`allowed-tools` is out of sync with what the body actually executes.
+
+**Fix text:** *"Frontmatter is incomplete or inconsistent: `<field>`. State `user-invocable` and
+`disable-model-invocation` as the independent 2x2 they are, and align `allowed-tools` with what the
+procedure actually calls."*
+
+---
+
+## 3. State model
 
 Whether the skill carries anything across runs, and whether that choice was made rather than
 inherited. Most skills are legitimately stateless — the failure is a skill whose value depends on
@@ -73,7 +96,7 @@ step 1 of the procedure, and make writing state back the final numbered step."*
 
 ---
 
-## 3. Structure
+## 4. Structure
 
 A skill is made of two kinds of material: **steps** (the procedure the agent walks) and
 **reference** (supporting material that helps execute a step — templates, glossaries, worked
@@ -95,7 +118,7 @@ pointer stating the condition under which it should be read."*
 
 ---
 
-## 4. Steering
+## 5. Steering
 
 Whether the skill actually changes what the agent does, versus merely describing what it should do.
 
@@ -115,7 +138,7 @@ use that exact term in the procedure and the output template."*
 
 ---
 
-## 5. Pruning
+## 6. Pruning
 
 Everything the skill would be better without.
 
@@ -143,6 +166,9 @@ Append this block to the standard audit report when Pass B ran:
 - **Trigger — FAIL.** Model-invoked with an ambient trigger ("user edits CLAUDE.md", line 7). The
   skill audits on demand; it should be user-invoked. → context load on every request for a
   deliberate action.
+- **Frontmatter completeness — FAIL.** `disable-model-invocation: true` but `user-invocable` is
+  unset and no other skill or slash command references this one by name (line 3) — no human or
+  automatic path reaches it.
 - **Structure — FAIL.** 420 lines, no `references/`. The canonical case (63-88), failure patterns
   (155-216) and worked examples (258-399) are reference material inlined into the steps.
 - **Pruning — FAIL.** The 10 parts exist twice (45-56 and 113-151) and the two copies have already
@@ -153,6 +179,6 @@ Append this block to the standard audit report when Pass B ran:
   remembering previous audits would not change the verdict.
 ```
 
-Order the five checkpoints worst-first. If Pass B produces a FAIL, the Main risk line comes from
+Order the six checkpoints worst-first. If Pass B produces a FAIL, the Main risk line comes from
 Pass B, not from the 10 parts — a skill that never fires, whose lists disagree with each other, or
 whose workspace is never read back, is broken in a way no amount of prompt content fixes.

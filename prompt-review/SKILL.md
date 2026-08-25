@@ -3,13 +3,14 @@ name: prompt-review
 description: >
   Audits an existing prompt (system prompt, CLAUDE.md, SKILL.md, sub-agent prompt, or a prompt
   embedded in a Claude API call) against Anthropic's 10-part framework, and — when the target is a
-  SKILL.md — also against the five-checkpoint skill checklist: trigger, state model, structure, steering, pruning.
+  SKILL.md — also against the six-checkpoint skill checklist: trigger, frontmatter, state model,
+  structure, steering, pruning.
   Reports a scored gap analysis with concrete fixes. Detects "ski accident" risk: confident
   hallucination caused by missing domain context. Invoke explicitly: /prompt-review <path>.
 license: Apache-2.0
 metadata:
   author: zaramando
-  version: "2.0"
+  version: "2.1"
 allowed-tools: Read, Grep, Glob
 disable-model-invocation: true
 ---
@@ -34,7 +35,7 @@ target at all, ask for one and stop.
 | Pass | Judges | Runs when |
 |------|--------|-----------|
 | **A — the 10 parts** | The prompt content: does it carry what the model needs to answer correctly? | Always |
-| **B — the skill checklist** | The artifact: trigger, state model, structure, steering, pruning | Only when the target is a `SKILL.md` |
+| **B — the skill checklist** | The artifact: trigger, frontmatter, state model, structure, steering, pruning | Only when the target is a `SKILL.md` |
 
 Pass B lives in `references/skill-checklist.md`. Read it at step 3 of the procedure, not before.
 
@@ -81,8 +82,8 @@ pass is the work; the report is just its summary.
    (`[v]` / `[!]` / `[x]` / `N/A`), and the proof — a line number and a short quote if present, or
    the specific thing that is absent if not. Ten lines. No part skipped, no part merged.
 3. **Evidence pass B** — only if the target is a `SKILL.md`. Read `references/skill-checklist.md`
-   and produce one verdict line per checkpoint (trigger, state, structure, steering, pruning) with the same
-   evidence discipline: line numbers, not impressions.
+   and produce one verdict line per checkpoint (trigger, frontmatter, state, structure, steering,
+   pruning) with the same evidence discipline: line numbers, not impressions.
 4. Determine the denominator for pass A: 10 if the target is an API call, otherwise 9 (part 9 is N/A).
 5. Score: one point per `[v]`. `[!]` and `[x]` score zero. Verify that
    `[v] + [!] + [x] + N/A` equals 10 before writing the score — if it does not, the evidence pass
@@ -112,6 +113,7 @@ pass is the work; the report is just its summary.
 
 ### Skill checklist (Pass B)     <!-- only when auditing a SKILL.md -->
 - **Trigger — FAIL.** <verdict with evidence and consequence>
+- **Frontmatter completeness — FAIL.** ...
 - **Structure — WEAK.** ...
 - **Pruning — WEAK.** ...
 - **Steering — PASS.** ...
