@@ -20,6 +20,8 @@ from pathlib import Path
 
 STATE = "benchmark.json"
 GAP_CAUSES = ("not-in-source", "not-in-product")
+SHEET_HEIGHT = 720   # per-screen height on a comparison sheet; aspect ratio kept
+SHEET_GUTTER = 10    # white separator between competitors
 
 
 def receipt(**kwargs) -> None:
@@ -223,6 +225,30 @@ def cmd_source(args) -> int:
     return 0
 
 
+def sheet_command(paths: list, out: Path) -> list:
+    """ffmpeg argv that lays screens side by side, left to right.
+
+    Normalise each input to a common HEIGHT and hstack. The obvious
+    concat+tile route cannot do this job: concat demands every input share
+    one resolution, and screens grabbed from different videos never do — it
+    aborts with "parameters do not match" and writes no file at all.
+    """
+    command = ["ffmpeg", "-hide_banner", "-loglevel", "error"]
+    for path in paths:
+        command += ["-i", str(path)]
+    chains = ";".join(
+        f"[{i}:v]scale=-2:{SHEET_HEIGHT},pad=iw+{SHEET_GUTTER}:ih:0:0:white[v{i}]"
+        for i in range(len(paths)))
+    if len(paths) > 1:
+        streams = "".join(f"[v{i}]" for i in range(len(paths)))
+        chains += f";{streams}hstack=inputs={len(paths)}[out]"
+        label = "[out]"
+    else:
+        label = "[v0]"   # hstack needs two or more inputs
+    return command + ["-filter_complex", chains, "-map", label,
+                      "-frames:v", "1", "-y", str(out)]
+
+
 def cmd_sheet(args) -> int:
     root = Path(args.dir)
     state = load(root)
@@ -233,7 +259,7 @@ def cmd_sheet(args) -> int:
         receipt(status="error", error_type="MissingDependency", hint="brew install ffmpeg")
         return 5
     steps = state["steps"] if args.all else [slug(args.step)]
-    made, empty = [], []
+    made, empty, failed = [], [], []
     for step in steps:
         if step not in state["steps"]:
             receipt(status="error", error_type="UnknownStep", value=step, known=state["steps"])
@@ -246,24 +272,27 @@ def cmd_sheet(args) -> int:
         if not paths:
             empty.append(step); continue
         out = root / f"compare-{state['steps'].index(step):02d}-{step}.png"
-        command = ["ffmpeg", "-hide_banner", "-loglevel", "error"]
-        for path in paths:
-            command += ["-i", str(path)]
-        streams = "".join(f"[{i}:v]" for i in range(len(paths)))
-        command += ["-filter_complex",
-                    f"{streams}concat=n={len(paths)}:v=1:a=0[c];"
-                    f"[c]scale=520:-1,tile={len(paths)}x1:padding=10:color=white[out]",
-                    "-map", "[out]", "-frames:v", "1", "-y", str(out)]
-        result = subprocess.run(command, capture_output=True, text=True, timeout=180)
+        result = subprocess.run(sheet_command(paths, out),
+                                capture_output=True, text=True, timeout=180)
         if result.returncode == 0 and out.exists():
             made.append({"step": step, "path": str(out), "competitors": len(paths)})
         else:
-            empty.append(step)
+            # Screens EXIST for this step — rendering them is what broke. Never
+            # let that surface as "no screens": it reads as absent evidence.
+            failed.append({"step": step, "competitors": len(paths),
+                           "detail": (result.stderr or "").strip()[:300]})
+    if failed and not made:
+        receipt(status="error", error_type="SheetFailed", failed=failed,
+                steps_without_screens=empty,
+                hint="ffmpeg could not build the sheet, but the screens are on disk. This is a "
+                     "rendering failure, NOT an absence of evidence — do not record gaps for it.")
+        return 1
     if not made:
         receipt(status="empty", steps_without_screens=empty,
                 hint="Nothing to compare yet. Capture screens for at least one competitor.")
         return 2
     receipt(status="success", action="sheet", sheets=made, steps_without_screens=empty,
+            failed=failed or None,
             hint="Each sheet places competitors side by side, left to right in spec order. "
                  "Open the sheet, not the individual screens.")
     return 0

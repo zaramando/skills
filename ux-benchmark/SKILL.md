@@ -178,6 +178,9 @@ Success carries the grid:
  "unsourced": [], "hint": "Open cells are unexamined, NOT absent features..."}
 ```
 `status: empty` from `sheet` means no screens exist for that step yet — capture, do not conclude.
+`error_type: SheetFailed` is the opposite and must never be confused with it: the screens ARE on
+disk and ffmpeg failed to render them. That is a broken tool, not missing evidence — never record a
+gap for it.
 
 Errors carry an `error_type` and a remedy:
 ```json
@@ -186,7 +189,7 @@ Errors carry an `error_type` and a remedy:
  "hint": "<the script's own remedy — always actionable>"}
 ```
 The full set: `NoWorkspace`, `UnknownStep`, `UnknownCompetitor`, `UnknownCell`,
-`AlreadyInitialised`, `BadSpec`, `FileNotFound`, `MissingDependency`.
+`AlreadyInitialised`, `BadSpec`, `FileNotFound`, `MissingDependency`, `SheetFailed`.
 
 ## Output format
 
