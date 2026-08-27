@@ -10,7 +10,6 @@ metadata:
   author: zaramando
   version: "1.4"
 allowed-tools: Read, Write, Edit, Grep, Glob
-disable-model-invocation: true
 ---
 
 # skill-author

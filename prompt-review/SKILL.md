@@ -12,7 +12,6 @@ metadata:
   author: zaramando
   version: "2.1"
 allowed-tools: Read, Grep, Glob
-disable-model-invocation: true
 ---
 
 # prompt-review
