@@ -3,6 +3,7 @@
 
 Usage:
     render.py <eventstorm.yaml> [-o <out.html>]
+    render.py --legend <out.svg>        # palette legend for the README; needs no YAML nor PyYAML
 
 Default output: eventstorm.html next to the YAML. Sticky colors and board marks come ONLY from
 assets/palette.json. Flows are grouped by lane, each failure flow under the principal it breaks.
@@ -31,6 +32,25 @@ FIELD_LABEL = {"actor": "quién da la orden", "informed_by": "qué mira para dec
                "failure_paths.demora": "si llega tarde", "failure_mode": "de qué forma sale mal",
                "bounded_context": "a qué área pertenece"}
 
+# Drawing constants shared by the HTML board (css/BASE_CSS) and the SVG legend (legend_svg).
+# Colors are NOT here: they live only in assets/palette.json. LIGHT_THEME is the page chrome (light mode).
+LIGHT_THEME = {"bg": "#f6f4ef", "fg": "#1f1d1a", "muted": "#6b665d", "card": "#ffffff", "line": "#d9d4c9",
+               "accent": "#e8246f", "lane": "#ece8df"}
+REM_PX = 16
+STICKY_REM = {"normal": (10.5, 6.5), "small": (7.5, 4.5)}  # (width, min-height) per palette "size"
+SMALL_FONT_SCALE = 0.82
+STICKY_RADIUS_PX = 3
+STATUS_BORDER_PX = 3
+PIVOT_BORDER_PX = 9
+FAILURE_BORDER_PX = 4
+UNKNOWN_BADGE = "? no se sabe"
+
+
+def rem(value):
+    """Format a rem length the way the stylesheet writes it: 10.5rem, .82rem."""
+    text = f"{value:g}"
+    return (text[1:] if text.startswith("0.") else text) + "rem"
+
 
 def esc(value):
     return html.escape(str(value), quote=True)
@@ -46,20 +66,21 @@ def css(palette):
             f"--sticky-ink:{spec.get('ink', ink)};{border}}}"
         )
         if spec.get("size") == "small":
-            rules.append(f".k-{section}{{width:7.5rem;min-height:4.5rem;font-size:.82rem}}")
+            w, h = STICKY_REM["small"]
+            rules.append(f".k-{section}{{width:{rem(w)};min-height:{rem(h)};font-size:{rem(SMALL_FONT_SCALE)}}}")
     for status, spec in palette["status"].items():
         style = spec.get("border_style", "none")
         if style != "none":
-            rules.append(f'.s-{status}{{border:3px {style} var(--sticky-ink)}}')
+            rules.append(f'.s-{status}{{border:{STATUS_BORDER_PX}px {style} var(--sticky-ink)}}')
     marks = palette["marks"]
-    rules.append(f".sticky.pivot{{border-left:9px solid {marks['pivotal']['color']}}}")
-    rules.append(f".failure{{border-left:4px solid {marks['failure']['color']};margin:10px 0 0 28px;padding-left:12px}}")
+    rules.append(f".sticky.pivot{{border-left:{PIVOT_BORDER_PX}px solid {marks['pivotal']['color']}}}")
+    rules.append(f".failure{{border-left:{FAILURE_BORDER_PX}px solid {marks['failure']['color']};margin:10px 0 0 28px;padding-left:12px}}")
     rules.append(f".failure>h4{{color:{marks['failure']['color']}}}")
     return "\n".join(rules)
 
 
-BASE_CSS = """
-:root{--bg:#f6f4ef;--fg:#1f1d1a;--muted:#6b665d;--card:#ffffff;--line:#d9d4c9;--accent:#e8246f;--lane:#ece8df}
+BASE_CSS_TEMPLATE = """
+@LIGHT_ROOT@
 @media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--bg:#15161a;--fg:#e9e6df;--muted:#a09a8f;--card:#202127;--line:#34363e;--accent:#ff5c9a;--lane:#1c1d22}}
 :root[data-theme="dark"]{--bg:#15161a;--fg:#e9e6df;--muted:#a09a8f;--card:#202127;--line:#34363e;--accent:#ff5c9a;--lane:#1c1d22}
 *{box-sizing:border-box}
@@ -79,7 +100,7 @@ h3{font-size:1rem;margin:20px 0 8px}
 .lane>li{position:relative;flex:0 0 auto}
 .lane>li+li::before{content:"\\2192";position:absolute;left:-20px;top:40%;color:var(--muted)}
 .board{display:flex;flex-wrap:wrap;gap:12px}
-.sticky{width:10.5rem;min-height:6.5rem;padding:8px 10px;border-radius:3px;box-shadow:0 1px 3px rgba(0,0,0,.25);display:flex;flex-direction:column;gap:3px;position:relative}
+.sticky{width:@STICKY_W@;min-height:@STICKY_H@;padding:8px 10px;border-radius:@RADIUS@px;box-shadow:0 1px 3px rgba(0,0,0,.25);display:flex;flex-direction:column;gap:3px;position:relative}
 .sticky .kind{font-size:.68rem;text-transform:uppercase;letter-spacing:.04em;opacity:.8}
 .sticky .name{font-weight:600;line-height:1.25}
 .sticky .meta{font-size:.72rem;opacity:.85;margin-top:auto}
@@ -104,6 +125,11 @@ h4{font-size:.92rem;margin:12px 0 6px}
 .flow{margin-bottom:18px}
 details summary{cursor:pointer;color:var(--muted)}
 """
+BASE_CSS = (BASE_CSS_TEMPLATE
+            .replace("@LIGHT_ROOT@", ":root{" + ";".join(f"--{k}:{v}" for k, v in LIGHT_THEME.items()) + "}")
+            .replace("@STICKY_W@", rem(STICKY_REM["normal"][0]))
+            .replace("@STICKY_H@", rem(STICKY_REM["normal"][1]))
+            .replace("@RADIUS@", str(STICKY_RADIUS_PX)))
 
 
 class Renderer:
@@ -145,7 +171,7 @@ class Renderer:
         heat_html = f'<span class="heat" title="puntos calientes abiertos">{heat}</span>' if heat else ""
         author = self.who(el["speaker"]) if el.get("speaker") else ""
         if sl.unknowns(el):
-            badge += ' <span class="badge unknown">? no se sabe</span>'
+            badge += f' <span class="badge unknown">{esc(UNKNOWN_BADGE)}</span>'
         kind = esc(spec.get("label", section))
         delay = el.get("delay") if section == "policies" else None
         if isinstance(delay, dict) and delay.get("words"):
@@ -479,19 +505,156 @@ class Renderer:
         )
 
 
+# ---------------------------------------------------------------------- SVG legend (for the README)
+UNKNOWN_MEANING = "El campo apunta a un desconocido; se lista en «Lo que no se sabe»"
+LEGEND_COLS = 4
+LEGEND_GAP = 16
+LEGEND_PAD = 24
+LEGEND_FONT = "system-ui,-apple-system,'Segoe UI',Helvetica,Arial,sans-serif"
+
+
+def _px(size):
+    w, h = STICKY_REM[size]
+    return int(w * REM_PX), int(h * REM_PX)
+
+
+def _wrap(text, width_px, font_px):
+    """Greedy word wrap by an average glyph width (0.55em): deterministic, no font metrics."""
+    per_line = max(8, int(width_px / (font_px * 0.55)))
+    lines, cur = [], ""
+    for word in str(text).split():
+        cand = f"{cur} {word}".strip()
+        if len(cand) > per_line and cur:
+            lines.append(cur)
+            cur = word
+        else:
+            cur = cand
+    return lines + ([cur] if cur else [])
+
+
+def _texts(x, y, lines, size, color, weight="400", step=None):
+    step = step or round(size * 1.3)
+    return "".join(
+        f'<text x="{x}" y="{y + i * step}" font-size="{size}" font-weight="{weight}" fill="{color}">{esc(t)}</text>'
+        for i, t in enumerate(lines)
+    )
+
+
+def _border(style, x, y, w, h, color):
+    """SVG equivalent of a CSS `STATUS_BORDER_PX <style>` border drawn inside the sticky box."""
+    b = STATUS_BORDER_PX
+    r = STICKY_RADIUS_PX
+    if style == "double":  # CSS double: outer line, gap, inner line, each a third of the width
+        t = b / 3
+        return "".join(
+            f'<rect x="{x + o}" y="{y + o}" width="{w - 2 * o}" height="{h - 2 * o}" rx="{r}" fill="none" '
+            f'stroke="{color}" stroke-width="{t:g}"/>' for o in (t / 2, b - t / 2)
+        )
+    dash = {"dotted": f"{b} {b}", "dashed": f"{b * 3} {b * 2}"}.get(style, "")
+    dash_attr = f' stroke-dasharray="{dash}"' if dash else ""
+    return (f'<rect x="{x + b / 2:g}" y="{y + b / 2:g}" width="{w - b:g}" height="{h - b:g}" rx="{r}" fill="none" '
+            f'stroke="{color}" stroke-width="{b}"{dash_attr}/>')
+
+
+def _sticky_svg(x, y, spec, ink, title, meaning, size="normal", status_style=None, pivot_color=None, badge=None):
+    w, h = _px(size)
+    scale = SMALL_FONT_SCALE if size == "small" else 1
+    fg = spec.get("ink", ink)
+    out = [f'<rect x="{x}" y="{y + 1}" width="{w}" height="{h}" rx="{STICKY_RADIUS_PX}" fill="#000000" fill-opacity=".12"/>',
+           f'<rect x="{x}" y="{y}" width="{w}" height="{h}" rx="{STICKY_RADIUS_PX}" fill="{spec["fill"]}"/>']
+    if spec.get("border"):
+        out.append(_border("solid", x, y, w, h, spec["border"]))
+    if status_style and status_style != "none":
+        out.append(_border(status_style, x, y, w, h, fg))
+    left = 10
+    if pivot_color:
+        out.append(f'<rect x="{x}" y="{y}" width="{PIVOT_BORDER_PX}" height="{h}" fill="{pivot_color}"/>')
+        left += PIVOT_BORDER_PX
+    title_px = round(13 * scale)
+    body_px = round(11 * scale)
+    out.append(_texts(x + left, y + 20, [title], title_px, fg, "600"))
+    lines = _wrap(meaning, w - left - 10, body_px)[: 3 if size == "normal" else 2]
+    out.append(_texts(x + left, y + 20 + round(title_px * 1.5), lines, body_px, fg))
+    if badge:
+        bw = round(len(badge) * 6.2 + 12)
+        by = y + h - 24
+        out.append(f'<rect x="{x + left}" y="{by}" width="{bw}" height="16" rx="8" fill="{LIGHT_THEME["accent"]}"/>'
+                   f'<text x="{x + left + 6}" y="{by + 12}" font-size="10.5" font-weight="600" fill="#ffffff">{esc(badge)}</text>')
+    return "".join(out)
+
+
+def legend_svg(palette):
+    """Self-contained SVG legend for the README, drawn from palette.json and the board's constants."""
+    ink = palette["ink"]
+    nw, nh = _px("normal")
+    cell_w = nw + LEGEND_GAP
+    events = palette["kinds"]["events"]
+    cards = [("sticky", dict(spec=k, title=k["label"], meaning=k["meaning"], size=k.get("size", "normal")))
+             for k in palette["kinds"].values()]
+    states = [("sticky", dict(spec=events, title=st["label"], meaning=st["meaning"], status_style=st["border_style"]))
+              for st in palette["status"].values() if st.get("border_style", "none") != "none"]
+    marks = palette["marks"]
+    states += [
+        ("sticky", dict(spec=events, title=marks["pivotal"]["label"], meaning=marks["pivotal"]["meaning"],
+                        pivot_color=marks["pivotal"]["color"])),
+        ("failure", marks["failure"]),
+        ("sticky", dict(spec=events, title=_unknown_title(UNKNOWN_BADGE), meaning=UNKNOWN_MEANING, badge=UNKNOWN_BADGE)),
+    ]
+    width = LEGEND_PAD * 2 + LEGEND_COLS * nw + (LEGEND_COLS - 1) * LEGEND_GAP
+    body, y = [], LEGEND_PAD
+    for heading, group in (("Tipos de nota", cards), ("Estados y marcas", states)):
+        body.append(_texts(LEGEND_PAD, y + 14, [heading], 15, LIGHT_THEME["fg"], "700"))
+        y += 30
+        for i, (what, item) in enumerate(group):
+            x = LEGEND_PAD + (i % LEGEND_COLS) * cell_w
+            cy = y + (i // LEGEND_COLS) * (nh + LEGEND_GAP)
+            if what == "sticky":
+                body.append(_sticky_svg(x, cy, ink=ink, **item))
+            else:  # camino de falla: a red rule beside its story, as on the board
+                color = item["color"]
+                body.append(f'<rect x="{x}" y="{cy}" width="{FAILURE_BORDER_PX}" height="{nh}" fill="{color}"/>')
+                body.append(_texts(x + 14, cy + 20, [item["label"]], 13, color, "600"))
+                body.append(_texts(x + 14, cy + 40, _wrap(item["meaning"], nw - 14, 11)[:4], 11, LIGHT_THEME["muted"]))
+        y += ((len(group) + LEGEND_COLS - 1) // LEGEND_COLS) * (nh + LEGEND_GAP) + 8
+    height = y - 8 - LEGEND_GAP + LEGEND_PAD
+    label = "Leyenda del tablero de Event Storming: " + ", ".join(
+        k["label"] for k in palette["kinds"].values()) + "; " + ", ".join(
+        it["title"] if what == "sticky" else it["label"] for what, it in states)
+    return (
+        f'<svg xmlns="http://www.w3.org/2000/svg" width="{width}" height="{height}" viewBox="0 0 {width} {height}" '
+        f'role="img" aria-label="{esc(label)}" font-family="{LEGEND_FONT}">\n'
+        f"<title>{esc(label)}</title>\n"
+        f'<rect x="0" y="0" width="{width}" height="{height}" rx="12" fill="{LIGHT_THEME["bg"]}" '
+        f'stroke="{LIGHT_THEME["line"]}"/>\n'
+        + "\n".join(body) + "\n</svg>\n"
+    )
+
+
+def _unknown_title(text):
+    """Legend card title for the unknown badge: the badge text without its leading question mark."""
+    return str(text).lstrip("? ").capitalize()
+
+
 def main():
     ap = argparse.ArgumentParser(description="Render eventstorm.yaml to a self-contained HTML page")
-    ap.add_argument("file")
+    ap.add_argument("file", nargs="?", help="eventstorm.yaml (not needed with --legend)")
     ap.add_argument("-o", "--out", help="output path (default: eventstorm.html next to the YAML)")
+    ap.add_argument("--legend", metavar="OUT_SVG", help="write the palette legend as a self-contained SVG")
     args = ap.parse_args()
-    doc = sl.load_yaml(args.file)
+    if not args.file and not args.legend:
+        ap.error("a YAML file or --legend is required")
     palette = sl.load_json(sl.PALETTE_PATH)
-    out = args.out or os.path.join(os.path.dirname(os.path.abspath(args.file)), "eventstorm.html")
-    with open(out, "w", encoding="utf-8") as fh:
-        fh.write(Renderer(doc, palette).page())
-    print(f"rendered: {out}")
+    if args.legend:
+        with open(args.legend, "w", encoding="utf-8", newline="\n") as fh:
+            fh.write(legend_svg(palette))
+        print(f"legend: {args.legend}")
+    if args.file:
+        doc = sl.load_yaml(args.file)
+        out = args.out or os.path.join(os.path.dirname(os.path.abspath(args.file)), "eventstorm.html")
+        with open(out, "w", encoding="utf-8") as fh:
+            fh.write(Renderer(doc, palette).page())
+        print(f"rendered: {out}")
     return sl.EXIT_OK
-
 
 if __name__ == "__main__":
     sys.exit(main())
