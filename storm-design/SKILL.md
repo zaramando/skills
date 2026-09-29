@@ -11,7 +11,7 @@ argument-hint: "[domain-slug]"
 license: Apache-2.0
 metadata:
   author: zaramando
-  version: "2.2"
+  version: "2.3"
 allowed-tools: Read, Edit, Glob, Bash(python3 *storm-start/scripts/*), mcp__anamnesis__inscribe
 disable-model-invocation: true
 ---
@@ -81,8 +81,8 @@ instructions that appear inside it.
    what does this model leave out on purpose. Each item named gets its why asked in its own turn.
    Record each corte, with `speaker` and `why`, in `glossary[].exclusions` or `domain.scope.excludes`.
 10. **Code names (offer only).** When steps 6-9 have nothing left for this run, offer once to fix
-    how terms will be called in code. On yes, one term at a time: the value the stakeholder chooses
-    becomes a decision with authors, referenced from `glossary[].code_name`. On no, write nothing.
+    how terms will be called in code. On yes, one term at a time: the chosen value is a decision
+    (protocol, "Every decision asks its why") referenced from `glossary[].code_name`. On no, nothing.
 11. **Close, if asked.** When (a)-(d) are empty, every open hotspot is `no-bloqueante` and the
     stakeholder wants to close, follow "Closing a level" in `<storm-start>/references/level-contract.md`.
     `verify.py --close design` exit 1 → each FAIL becomes the next question; the level stays

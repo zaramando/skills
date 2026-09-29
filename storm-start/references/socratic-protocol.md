@@ -77,6 +77,10 @@ Right:       "más o menos" is a no → nothing is confirmed. Two voices disagre
              "Si el socio deja el libro en el buzón el domingo a la noche, ¿cuándo quedó devuelto?"
 ```
 
+**Invariant exception.** The answer to "¿Qué haría que esto deje de ser un X?" gets no devolución
+of its own: the rule is played back and confirmed only after at least one `caso-límite` tested its
+edge. The order lives in storm-design's `references/invariants-and-aggregates.md`, "Question ladder".
+
 **Escape "dame varias".** Only in Big Picture, only when the stakeholder asks for it: take a quick
 dump of events as `propuesto`, then run ONE block devolución and have each item confirmed or
 corrected individually. The dump ends the escape; the next question returns to one at a time.
@@ -102,9 +106,12 @@ state, failure mode, actor kind, policy mode, a plazo as `delay` or as `time` (s
 `references/process-grammar.md`, "Time"), invariant vs validación, severity reason — is
 confirmed with the voice, and nothing is ever attributed to a voice that did not say it.**
 
-Names follow the same rule. No `name` field is ever yours — not a domain, a flow, a reaction, a
-thing looked at, a group of rules or an area: it is the voice's words, or the answer to a `nombre`
-or `nombre-flujo` question. Each level's reference says where that question goes.
+Names follow the same rule. No `name` field is ever yours — not a domain, a flow (a camino de falla
+included), a reaction, a thing looked at, a group of rules or an area: it is the voice's words, or
+the answer to a `nombre` or `nombre-flujo` question. No part of it is yours either: no prefix or
+label marks what kind of thing it is — the `kind` field does. A voice with no name for a flow or a
+reaction gives its own sentence for it, verbatim, as the name. Each level's reference says where
+that question goes.
 
 ## "No sé" is an answer
 
@@ -168,7 +175,8 @@ The kind is recorded in `session.pending_questions.<slot>.kind`. Ask for cases, 
 | `lectura` | What someone needs to see or know before deciding (a read model) | "Justo antes de <acción>, ¿qué necesitas ver para decidirlo?" |
 | `nombre` | A reaction, a thing looked at, a group of rules or an area is confirmed and has no name in the voice's words yet | "¿Cómo le llaman ustedes a esto?" |
 | `nombre-flujo` | Events were grouped into one story and it has no name yet | "¿Cómo le llaman ustedes a esta historia?" |
-| `alternativas` | A decision was just confirmed and its discarded options were not asked | "¿Qué otra opción había?" — its own turn, after the decision's devolución; "¿Por qué no esa?" is the next one, per option |
+| `porqué` | A decision was just confirmed and its why was not asked | "¿Por qué eso?" — its own turn, after the decision's devolución |
+| `alternativas` | A decision's why is confirmed and its discarded options were not asked | "¿Qué otra opción había?" — its own turn; "¿Por qué no esa?" is the next one, per option |
 | `code_name` | Only when the stakeholder accepted fixing names for code | "¿En el código se llama igual o de otra forma?" |
 
 BAD: "¿Qué es un préstamo?" — invites a dictionary definition that everyone agrees with and nobody uses.
@@ -222,6 +230,11 @@ Run on every answer, before the devolución. Each detector has one mandatory act
   case again to each voice; a changed verdict gets its own devolución and replaces that voice's
   `edge_cases` entry. Opposite verdicts remain → the decision is not written and the hotspot stays
   open. `verify.py` enforces it (`unified-verdicts`).
+- **Every decision asks its why.** Whatever step writes a decision, its `why` is the answer to a
+  `porqué` question, one per author, each in its own turn: their words, each with who said it.
+  Never yours, never pieced together from an answer to another question, never a reason for an
+  author who did not give one. The decision is written once its why and its alternatives are
+  confirmed.
 - A decision records the alternatives discarded in `alternatives_rejected`, asked as an
   `alternativas` question. If a voice says there were none, keep their answer in
   `alternatives_asked`; never invent an alternative to fill the list.

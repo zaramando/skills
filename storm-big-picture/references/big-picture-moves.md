@@ -96,8 +96,10 @@ Goal: the flow survives being read in both directions, and its failure is on the
   `none_said.pivot: {words, speaker}` on the flow.
 - **Camino de falla.** The flow's **evento clave** is its pivotal event; with `none_said.pivot`, its
   last event. Ask: "¿Qué pasa cuando <evento clave> no llega a pasar, o sale mal?" Build the answer
-  as a flow of its own, `name: "Falla: <what fails, in their words>"`, `kind: falla`, `failure_of:
-  <the principal flow's id>`, with the same moves. If the voice says there is no failure, write
+  as a flow of its own, `kind: falla`, `failure_of: <the principal flow's id>`, with the same moves.
+  Its name is asked like a principal flow's, as its own `nombre-flujo` question, and so is the name
+  of every camino de falla another move creates; `kind` marks it as a failure, never a prefix in
+  the name (the protocol's anti-completado, names). If the voice says there is no failure, write
   `none_said.failure`; if nobody knows, open a hotspot `desconocido`, `level: big-picture`, whose
   `refs` hold the flow.
 - **Failure events.** For each `failure: true` event in no flow and no open hotspot — whether or not

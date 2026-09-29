@@ -250,6 +250,8 @@ class Renderer:
     def flow_block(self, fl, heading, failures=""):
         status = fl.get("status", "")
         tag = "" if status == "confirmado" else f' <span class="badge">{esc(self.pal["status"].get(status, {}).get("label", status))}</span>'
+        if fl.get("kind") == "falla":  # the kind marks a camino de falla; its name is the voice's, unprefixed
+            tag = f' <span class="badge">{esc(self.pal["marks"]["failure"]["label"])}</span>' + tag
         walked = [LEVEL_LABEL[lv] for lv in ("big-picture", "process") if (fl.get("walked") or {}).get(lv)]
         walked_html = f' <span class="badge">recorrido: {esc(" · ".join(walked))}</span>' if walked else ""
         steps = "".join(f"<li>{self.sticky(step)}</li>" for step in fl.get("steps") or [])
@@ -271,7 +273,6 @@ class Renderer:
             if fl.get("kind") == "falla" and fl.get("failure_of") in principal:
                 failures_of.setdefault(fl["failure_of"], []).append(fl)
         attached = {fl.get("id") for group in failures_of.values() for fl in group}
-        label = self.pal["marks"]["failure"]["label"]
         by_lane = {}
         for fl in flows:
             if fl.get("id") in attached:
@@ -285,7 +286,7 @@ class Renderer:
                     f'<div class="failure">{self.flow_block(f, "h4")}</div>' for f in failures_of.get(fl.get("id"), [])
                 )
                 if fl.get("kind") == "falla":
-                    blocks.append(f'<div class="failure"><h4>{esc(label)} sin flujo principal</h4>'
+                    blocks.append(f'<div class="failure"><h4>Sin flujo principal</h4>'
                                   f'{self.flow_block(fl, "h4")}</div>')
                 else:
                     blocks.append(self.flow_block(fl, "h3", fails))

@@ -11,7 +11,7 @@ argument-hint: "[domain-slug]"
 license: Apache-2.0
 metadata:
   author: zaramando
-  version: "2.1"
+  version: "2.2"
 allowed-tools: Read, Edit, Glob, Bash(python3 *storm-start/scripts/*), mcp__anamnesis__inscribe
 disable-model-invocation: true
 ---

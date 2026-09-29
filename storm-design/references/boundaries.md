@@ -23,7 +23,8 @@ the word is the same, but whether the rules it follows are. Compare the `invaria
 3. Ask who decides. The authors are voices in `speakers`, never you and never "el equipo". If nobody
    present can decide, the hotspot stays open with the severity the protocol's "Severity" sets; do
    not ask whether it blocks.
-4. Write the decision: `statement`, `speakers` as authors, `why` in their words, `outcome:
+4. Write the decision: `statement`, `speakers` as authors, `why` (asked per the protocol's "Every
+   decision asks its why"), `outcome:
    unificar` or `separar`, `alternatives_rejected` (the option not taken, with its `why_not`, asked
    as an `alternativas` question), `refs` to both glossary entries and the hotspot, `level: design`.
    Set the hotspot `resolution: resuelto` with `resolved_by`, and `decision` on both glossary
@@ -47,7 +48,8 @@ hotspot to stay in the YAML, resolved: `verify.py` checks it (`homonym-boundary`
 If no boundary appears, the domain still needs one bounded context (the design gate checks it):
 every aggregate references one or an open design doubt about its area (see
 `invariants-and-aggregates.md`, "Grouping", point 3). Ask the stakeholder to name the area, as in
-"Per decided boundary", and record why no split was needed as a decision only if someone proposed one.
+"Per decided boundary". Only if someone proposed a split, keeping one area is a decision, its why
+asked per the protocol's "Every decision asks its why".
 
 ## Edge case — a conflict disguised as a boundary
 

@@ -457,7 +457,7 @@ flows:
     walked: {big-picture: true, process: true}
     provenance: {kind: pregunta, question: "Cuéntame un préstamo de punta a punta, en orden"}
   - id: fl-prestamo-rechazado
-    name: "Falla: el préstamo no sale"
+    name: "Se va sin el libro"
     kind: falla
     failure_of: fl-prestamo
     lane: circulación
@@ -467,7 +467,7 @@ flows:
     walked: {big-picture: true, process: true}
     provenance: {kind: respuesta, question: "¿Qué pasa cuando el préstamo no llega a salir?", answer: "Si debe una multa, se rechaza y se va sin el libro"}
   - id: fl-vencimiento
-    name: "Falla: el libro no vuelve a tiempo"
+    name: "Los vencidos"
     kind: falla
     failure_of: fl-prestamo
     lane: circulación

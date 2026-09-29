@@ -77,8 +77,7 @@ fields specific to this level:
 - **Policy** — `policies[]`, id `pol-`. `when` = the events, `then` = ONE command. `mode:
   automática` or `mode: manual`; a manual policy's `then` command has the deciding person as
   `actor`. A plazo goes to `delay` or not, per "Time". `name` is the answer to the policy-name row
-  of the table, never yours (the protocol's anti-completado, names); a voice with no name for it
-  gives its own sentence of the rule, verbatim, as the name.
+  of the table, never yours; a voice with no name follows the protocol's anti-completado, names.
 - **System actor** — an automatic policy's `then` command still needs an `actor`. Ask who or what
   runs it; a system enters `actors` with `kind: sistema`, named as the voice names it. Nobody
   knows → `actor: {desconocido: <hs-id>}`.
@@ -91,7 +90,8 @@ fields specific to this level:
   to someone else. Write `informed_by` pointing to the actor's hotspot.
 - **Flow** — extend the chosen flow's `steps` in timeline order: `act-`, `rm-`, `cmd-`, `ev-`,
   `pol-`, next `cmd-`… Failure events and their follow-ups go in the flow's camino de falla
-  (`kind: falla`, `failure_of` the chosen flow), created now if Big Picture left none. Do not add
+  (`kind: falla`, `failure_of` the chosen flow), created now if Big Picture left none, with its name
+  asked as a `nombre-flujo` question (the protocol's anti-completado, names). Do not add
   `agg-` ids at this level.
 - **Flow walked** — once every event in a chosen flow and in its caminos de falla has
   `triggered_by`, and every command in them has its three `failure_paths`, set `walked.process:

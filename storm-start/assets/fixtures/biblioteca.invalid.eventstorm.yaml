@@ -207,14 +207,14 @@ flows:
     walked: {big-picture: true}
     provenance: {kind: pregunta, question: "¿Cómo es un préstamo?"}
   - id: fl-rechazo                     # big-picture-close: falla without failure_of, and no event
-    name: "Falla: no sale"
+    name: "No sale"
     kind: falla
     status: propuesto
     speaker: sp-rosa
     steps: [cmd-prestar-libro]
     provenance: {kind: pregunta, question: "¿Y si no sale?"}
   - id: fl-reintento
-    name: "Falla de la falla"
+    name: "El reintento"
     kind: falla
     failure_of: fl-rechazo             # flows: failure_of points to another failure flow
     status: propuesto

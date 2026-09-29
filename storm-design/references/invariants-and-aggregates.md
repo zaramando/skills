@@ -24,16 +24,20 @@ from the design detectors before writing; the classification is the voice's, not
 
 ## Question ladder (step 6)
 
-One question per turn, each followed by a devolución.
+One question per turn. This is the single source of the order (the protocol's "Invariant
+exception" points here): nothing of the rule is confirmed before step 4.
 
-1. `invariante` — "¿Qué haría que esto deje de ser un <X>?"
-2. `caso-límite` — take the answer to its edge with a concrete case from THEIR domain: "Si un libro
-   se lee en la sala y no sale, ¿es un préstamo?" Record the verdict (`es`, `no-es`, `depende`)
-   with `why` and `speaker` in `glossary[].edge_cases`.
+1. `invariante` — "¿Qué haría que esto deje de ser un <X>?" Keep their words; no devolución yet.
+2. `caso-límite` — at least one, always: take the answer to its edge with a concrete case from
+   THEIR domain: "Si un libro se lee en la sala y no sale, ¿es un préstamo?" Keep the verdict
+   (`es`, `no-es`, `depende`) and the reason, if they gave one. A case that changes the rule gets another case.
 3. A `depende` verdict is not an answer yet: ask a `repregunta` with a case that separates the two
    readings, per the protocol.
-4. Stop when a new case no longer changes the rule. Say what the rule is, in their words, and ask
-   for the yes.
+4. Devolución — when a new case no longer changes the rule: the protocol's block devolución, the
+   rule in their words as item 1 and one item per case with its verdict. Then the confirmation:
+   each number gets its yes or its correction.
+5. Write only what got its yes: the rule where "The stance" says, each verdict with `speaker`
+   (and `why`, when given) in `glossary[].edge_cases`.
 
 ## Grouping into aggregates (step 8)
 
@@ -76,10 +80,14 @@ built from events (a read model already listed by Process) and sits outside the 
 ```
 Pregunta:    ¿Qué haría que esto deje de ser un préstamo?
 Rosa:        Que el libro esté prestado a dos a la vez; eso ya es un error.
-Devolución:  Para ti, un libro que ya está afuera no se puede prestar otra vez hasta que vuelve.
-             Lo anotaría así → Regla de "préstamo" · un libro prestado no se presta de nuevo · si no, "es un error"
-             ¿Es así?
-Rosa:        Sí.
+Pregunta:    Si un socio lee un libro en la sala y no lo saca, ¿es un préstamo?
+Rosa:        No, si no sale del edificio no hay préstamo.
+Devolución:  Para ti, un libro que ya está afuera no se puede prestar otra vez hasta que vuelve,
+             y sin salir del edificio no hay préstamo.
+             1) Regla de "préstamo" · un libro prestado no se presta de nuevo · si no, "es un error"
+             2) caso "un libro que se lee en la sala y no sale" → no es
+             ¿Cada número es así?
+Rosa:        Sí, los dos.
 Pregunta:    Y la ficha del socio, ¿tiene que cambiar en el mismo instante que se presta, o puede
              ponerse al día después?
 Rosa:        Puede salir después; la ficha sale de los préstamos.
