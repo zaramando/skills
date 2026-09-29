@@ -3,7 +3,9 @@
 # (hs-libro-ejemplar: its cases got opposite verdicts, so it is bloqueante by rule).
 # Also shows: one hotspot holding several "no sé" (hs-quien-avisa, hs-aviso-reserva), desconocido in
 # triggered_by, policies.then and policies.mode, an aggregate whose area waits for the open frontera
-# (agg-ejemplar), and a policy delay in the voice's words (pol-avisar-reserva).
+# (agg-ejemplar), policy delays in the voice's words for plazos counted from an event
+# (pol-vencer-a-los-14, pol-multar-vencido, pol-avisar-reserva: process-grammar.md "Time"), and a
+# hecho pendiente whose trigger Process asked outside every flujo elegido (ev-prestamo-renovado).
 schema_version: "3.1"
 
 domain:
@@ -76,7 +78,7 @@ events:
     speaker: sp-rosa
     terms: [préstamo]
     failure: true
-    triggered_by: [{time: "cuando pasan los 14 días y el libro no volvió"}]
+    triggered_by: [cmd-vencer-prestamo]
     provenance: {kind: respuesta, question: "¿Hay algo que pase aunque nadie haga nada?", answer: "A los 14 días, si no volvió, el préstamo vence"}
   - id: ev-multa-generada
     name: "Multa generada"
@@ -117,6 +119,7 @@ events:
     status: confirmado
     speaker: sp-rosa
     terms: [préstamo]
+    triggered_by: [{desconocido: hs-renovacion-quien}]
     provenance: {kind: respuesta, question: "¿Qué más le puede pasar a un préstamo?", answer: "Se puede renovar una vez"}
   - id: ev-socio-bloqueado
     name: "Socio bloqueado"
@@ -160,6 +163,18 @@ commands:
       error: {no_aplica: true, words: "Si una noche no corre, la noche siguiente suma los días igual", speaker: sp-rosa}
       demora: {no_aplica: true, words: "Se cuenta por días de atraso; que salga tarde no cambia el monto", speaker: sp-rosa}
     provenance: {kind: respuesta, question: "¿Quién o qué genera la multa?", answer: "El sistema de circulación, solo, cada noche"}
+  - id: cmd-vencer-prestamo
+    name: "Vencer el préstamo"
+    status: confirmado
+    speaker: sp-rosa
+    terms: [préstamo]
+    actor: act-sistema-circulacion
+    results_in: [ev-prestamo-vencido]
+    failure_paths:
+      rechazo: {no_aplica: true, words: "Nadie lo decide; pasan los días y vence", speaker: sp-rosa}
+      error: {no_aplica: true, words: "Si el sistema no corre esa noche, vence igual con la fecha que le tocaba", speaker: sp-rosa}
+      demora: {no_aplica: true, words: "La fecha de vencimiento ya está puesta desde que se presta", speaker: sp-rosa}
+    provenance: {kind: respuesta, question: "¿Quién o qué hace que el préstamo venza?", answer: "El sistema de circulación: a los 14 días, si no volvió, el préstamo vence"}
   - id: cmd-avisar-socio
     name: "Avisar al socio"
     status: confirmado
@@ -206,6 +221,15 @@ actors:
     provenance: {kind: respuesta, question: "¿Quién o qué genera la multa?", answer: "El sistema de circulación, solo, cada noche"}
 
 policies:
+  - id: pol-vencer-a-los-14
+    name: "El vencimiento a los 14 días"
+    status: confirmado
+    speaker: sp-rosa
+    when: [ev-libro-prestado]
+    then: cmd-vencer-prestamo
+    mode: automática
+    delay: {words: "A los 14 días, si no volvió", speaker: sp-rosa}
+    provenance: {kind: respuesta, question: "Esa regla, 'cada vez que se presta un libro, a los 14 días vence si no volvió', ¿cómo le llaman ustedes?", answer: "El vencimiento a los 14 días"}
   - id: pol-multar-vencido
     name: "Multar cada día de atraso"
     status: confirmado
@@ -213,6 +237,7 @@ policies:
     when: [ev-prestamo-vencido]
     then: cmd-generar-multa
     mode: automática
+    delay: {words: "Cada día que pasa vencido", speaker: sp-rosa}
     provenance: {kind: respuesta, question: "Cada vez que un préstamo vence, ¿qué tiene que pasar sí o sí?", answer: "Cada día que pasa vencido, el sistema le suma la multa solo"}
   - id: pol-avisar-vencido
     name: "Avisar cuando vence"
@@ -355,6 +380,26 @@ hotspots:
     status: confirmado
     speaker: sp-rosa
     provenance: {kind: respuesta, question: "¿Quién o qué hace que un libro quede reservado?", answer: "No sé, es lo mismo que el aviso: la reserva la maneja la web"}
+  - id: hs-renovacion-quien
+    question: "¿Quién o qué hace que un préstamo se renueve?"
+    type: desconocido
+    severity: no-bloqueante
+    level: process
+    refs: [ev-prestamo-renovado]
+    resolution: abierto
+    status: confirmado
+    speaker: sp-rosa
+    provenance: {kind: respuesta, question: "¿Quién o qué hace que un préstamo se renueve?", answer: "No sé quién lo renueva"}
+  - id: hs-vencer-grupo
+    question: "Vencer el préstamo, ¿tiene que respetar alguna regla del préstamo en el mismo instante?"
+    type: desconocido
+    severity: no-bloqueante
+    level: design
+    refs: [cmd-vencer-prestamo]
+    resolution: abierto
+    status: confirmado
+    speaker: sp-rosa
+    provenance: {kind: respuesta, question: "Cuando el préstamo vence, ¿qué regla no puede quedar rota ni un segundo?", answer: "No sé; vence solo"}
   - id: hs-aviso-grupo
     question: "Avisar al socio, ¿tiene que respetar alguna regla del préstamo o de la multa en el mismo instante?"
     type: desconocido
@@ -428,7 +473,7 @@ flows:
     lane: circulación
     status: confirmado
     speaker: sp-rosa
-    steps: [ev-prestamo-vencido, pol-multar-vencido, act-sistema-circulacion, cmd-generar-multa, agg-multa, ev-multa-generada, pol-avisar-vencido, cmd-avisar-socio, ev-socio-avisado]
+    steps: [pol-vencer-a-los-14, act-sistema-circulacion, cmd-vencer-prestamo, ev-prestamo-vencido, pol-multar-vencido, cmd-generar-multa, agg-multa, ev-multa-generada, pol-avisar-vencido, cmd-avisar-socio, ev-socio-avisado]
     walked: {big-picture: true, process: true}
     provenance: {kind: respuesta, question: "¿Qué pasa cuando el libro no vuelve?", answer: "A los 14 días vence, se genera la multa y se le avisa"}
   - id: fl-catalogacion

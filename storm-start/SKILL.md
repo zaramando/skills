@@ -11,7 +11,7 @@ argument-hint: "[domain-slug]"
 license: Apache-2.0
 metadata:
   author: zaramando
-  version: "3.1"
+  version: "3.2"
 allowed-tools: Read, Write, Edit, Glob, Bash(python3 *storm-start/scripts/*), mcp__anamnesis__inscribe
 disable-model-invocation: true
 ---
@@ -80,8 +80,8 @@ bootstrap starts over. Every question still follows the protocol's loop.
    Fill `domain.name`, `domain.slug`, `domain.language`, `speakers` (a single voice gets
    `default: true`) and `session.updated` (today). From here on every question goes to
    `session.pending_questions.start` before it is asked.
-4. Ask what is in (`alcance`), then — as a separate question — what is deliberately out and why
-   (`exclusión`). Write `domain.scope.includes` and `domain.scope.excludes`.
+4. Ask what is in (`alcance`); then, one question per turn, what is deliberately out
+   (`exclusión`) and why each item is. Write `domain.scope.includes` and `domain.scope.excludes`.
 5. Ask whether there are transcripts, documents or legacy code. Register them in `domain.sources`;
    do not read them here: the level skill turns them into questions.
 6. Continue at step 7 of the procedure.

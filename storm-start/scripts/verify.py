@@ -304,9 +304,9 @@ def check_unknowns(doc, ctx):
             if h.get("resolution") != "abierto":
                 out.append(f"{_name(el)}: {field} -> {hs}, which is resolved; write the answer in place of the unknown")
             if field == "bounded_context":
-                if h.get("type") != "frontera-candidata":
-                    out.append(f"{_name(el)}: bounded_context -> {hs}, a {h.get('type')}; an undecided area points "
-                               f"to the open frontera-candidata that has not decided it")
+                if h.get("level") != "design":
+                    out.append(f"{_name(el)}: bounded_context -> {hs} at level {h.get('level')}; an undecided area "
+                               f"points to an open design hotspot")
             elif h.get("level") == "design":
                 out.append(f"{_name(el)}: {field} -> {hs} at level design; a process field needs a big-picture "
                            f"or process hotspot")
@@ -548,12 +548,26 @@ def check_chosen_flows(doc, ctx):
     return out
 
 
+def pending_events(doc, ctx):
+    """Hechos pendientes = events that an open big-picture hotspot refs (level-contract.md "Flujo elegido")."""
+    return {r for h in _items(doc, "hotspots") if h.get("resolution") == "abierto" and h.get("level") == "big-picture"
+            for r in h.get("refs") or [] if _section(ctx, r) == "events"}
+
+
 def check_event_triggers(doc, ctx):
     if not ctx["gates"] & {"process", "design"}:
         return []
     events, _c, _p = _process_scope(doc, ctx)
-    return [f"{_name(ev)}: in a flujo elegido, no trigger (command, external system, time or desconocido)"
-            for ev in _items(doc, "events") if ev.get("id") in events and not ev.get("triggered_by")]
+    pending = pending_events(doc, ctx)
+    out = []
+    for ev in _items(doc, "events"):
+        if ev.get("triggered_by"):
+            continue
+        if ev.get("id") in events:
+            out.append(f"{_name(ev)}: in a flujo elegido, no trigger (command, external system, time or desconocido)")
+        elif ev.get("id") in pending:
+            out.append(f"{_name(ev)}: hecho pendiente (an open big-picture hotspot refs it), no trigger")
+    return out
 
 
 def check_process_close(doc, ctx):
@@ -582,14 +596,25 @@ def check_design_close(doc, ctx):
         if (cmd.get("status") != "hipótesis-sin-autor" and cmd.get("id") not in handled
                 and cmd.get("id") not in design_refs):
             out.append(f"{_name(cmd)}: no aggregate handles it and no open design hotspot references it")
-    if not _items(doc, "bounded_contexts"):
-        out.append("no bounded context: every domain has at least one")
+    undecided = [agg for agg in _items(doc, "aggregates") if _open_design_unknown(ctx, agg.get("bounded_context"))]
+    if not _items(doc, "bounded_contexts") and not undecided:
+        out.append("no bounded context, and no aggregate whose area is an open design hotspot")
     return out
+
+
+def _open_design_unknown(ctx, value):
+    """{desconocido: hs} toward an open design hotspot: the honest "no sé" to "¿a qué área pertenece?"."""
+    hs = sl.unknown(value)
+    if _section(ctx, hs) != "hotspots":
+        return False
+    h = ctx["index"][hs][1]
+    return h.get("resolution") == "abierto" and h.get("level") == "design"
 
 
 # (name, function, when it runs, fails when, session that fixes it). "gated" = runs only for levels
 # already `cerrado` plus the --close level. "flujo elegido scope" = the flows of the current
-# `level: process` decisions plus their caminos de falla.
+# `level: process` decisions plus their caminos de falla; "hecho pendiente" = an event an open
+# big-picture hotspot refs. Both are defined in level-contract.md "Flujo elegido".
 CHECKS = [
     ("schema", check_schema, "always",
      "the YAML breaks the schema; later checks are skipped", "the session that wrote the element"),
@@ -609,7 +634,7 @@ CHECKS = [
      "or to another level", "the session that wrote the decision"),
     ("unknowns", check_unknowns, "always",
      "a desconocido points to no hotspot or to a resolved one; a process field points to a design "
-     "hotspot; an aggregate's bounded_context points to anything but a frontera-candidata",
+     "hotspot; an aggregate's bounded_context points to a hotspot of another level than design",
      "the session that wrote the element"),
     ("triggers", check_triggers, "always",
      "triggered_by points to a policy or to anything but a command that lists the event, "
@@ -649,13 +674,14 @@ CHECKS = [
      "no flujo elegido (no current level: process decision references a flow); a flujo elegido "
      "without walked.process", "/storm-process"),
     ("event-triggers", check_event_triggers, "gated, process+",
-     "an event in the flujo elegido scope has no triggered_by", "/storm-process"),
+     "an event in the flujo elegido scope, or a hecho pendiente (an event an open big-picture "
+     "hotspot refs), has no triggered_by", "/storm-process"),
     ("process-close", check_process_close, "gated, process",
      "a command in the flujo elegido scope without its three failure_paths; a policy there without mode",
      "/storm-process"),
     ("design-close", check_design_close, "gated, design",
      "an aggregate without invariants; a command no aggregate handles and no open design hotspot "
-     "references; no bounded context", "/storm-design"),
+     "references; no bounded context while no aggregate's area is an open design hotspot", "/storm-design"),
 ]
 
 

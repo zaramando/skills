@@ -34,8 +34,10 @@ the word is the same, but whether the rules it follows are. Compare the `invaria
 
 The hotspot already has `resolved_by`: separate or unify is settled, so do NOT ask it again. Only:
 
-1. Ask the name and the purpose of each context in their words ("¿Qué parte de esto es solo tuya?").
-2. Write `bounded_contexts` and set `glossary[].bounded_context` on every term of that area.
+1. Ask the name of each context in their words (kind `nombre`: "¿Cómo le llaman ustedes a esta
+   área?"). No name → the context is not written; the question stays in `pending_questions.design`.
+2. In its own turn, ask its purpose ("¿Qué parte de esto es solo tuya?").
+3. Write `bounded_contexts` and set `glossary[].bounded_context` on every term of that area.
 
 Keeping two glossary entries for one word across two contexts requires the `frontera-candidata`
 hotspot to stay in the YAML, resolved: `verify.py` checks it (`homonym-boundary`).
@@ -43,8 +45,9 @@ hotspot to stay in the YAML, resolved: `verify.py` checks it (`homonym-boundary`
 ## The single-context case
 
 If no boundary appears, the domain still needs one bounded context (the design gate checks it):
-every aggregate references one. Ask the stakeholder to name the area, and record why no split was
-needed as a decision only if someone proposed one.
+every aggregate references one or an open design doubt about its area (see
+`invariants-and-aggregates.md`, "Grouping", point 3). Ask the stakeholder to name the area, as in
+"Per decided boundary", and record why no split was needed as a decision only if someone proposed one.
 
 ## Edge case — a conflict disguised as a boundary
 

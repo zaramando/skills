@@ -46,6 +46,11 @@ events:
     status: hipótesis-sin-autor
     triggered_by: [{time: "cada noche"}]
     provenance: {kind: fuente, source: "legacy/bloqueo.sql"}  # sources: not in domain.sources
+  - id: ev-prestamo-renovado           # event-triggers: a hecho pendiente (hs-renovacion-orden refs it), no trigger
+    name: "Préstamo renovado"
+    status: confirmado
+    speaker: sp-rosa
+    provenance: {kind: respuesta, question: "¿Qué más?", answer: "Se renueva"}
   - id: ev-libro-reservado             # NOT a defect: outside the flujo elegido, so no trigger is required
     name: "Libro reservado"
     status: confirmado
@@ -96,7 +101,13 @@ aggregates:
     name: "Multa"
     status: propuesto
     speaker: sp-rosa
-    bounded_context: {desconocido: hs-pago-parcial}  # unknowns: an undecided area points to a frontera-candidata, not an ambigüedad
+    bounded_context: {desconocido: hs-pago-parcial}  # unknowns: an undecided area points to a design hotspot, not a big-picture one
+    provenance: {kind: pregunta, question: "¿Cómo le llaman a esto?"}
+  - id: agg-socio                      # design-close: no invariant
+    name: "Socio"
+    status: propuesto
+    speaker: sp-rosa
+    bounded_context: {desconocido: hs-frontera-plazo}  # unknowns: the design hotspot is resolved; design-close: so it does not excuse the missing bounded context
     provenance: {kind: pregunta, question: "¿Cómo le llaman a esto?"}
 
 hotspots:
@@ -109,6 +120,16 @@ hotspots:
     status: propuesto
     speaker: sp-rosa
     provenance: {kind: pregunta, question: "¿Una multa pagada a medias está pagada?"}
+  - id: hs-renovacion-orden
+    question: "¿En qué momento del préstamo entra la renovación?"
+    type: desconocido
+    severity: no-bloqueante
+    level: big-picture
+    refs: [ev-prestamo-renovado]
+    resolution: abierto
+    status: confirmado
+    speaker: sp-rosa
+    provenance: {kind: respuesta, question: "¿Antes o después del vencimiento?", answer: "No sé"}
   - id: hs-libro-ejemplar
     question: "¿'Libro' es lo mismo para circulación y para catálogo?"
     type: frontera-candidata

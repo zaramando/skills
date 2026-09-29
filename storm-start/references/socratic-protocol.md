@@ -43,7 +43,9 @@ right column.
 
 One question, one answer, one devolución. Always in this order:
 
-1. **Ask ONE question.** Pick its kind from the table below. Record it in
+1. **Ask ONE question.** One thing to answer per message: a "¿y por qué?", a second clause or a
+   second option to fill in is the next turn, after the devolución. A case that illustrates the
+   question is fine as long as it asks nothing of its own. Pick its kind from the table below. Record it in
    `session.pending_questions.<slot>` before asking — the slot is your skill's level, or `start` for
    storm-start — so an interrupted session resumes on it.
 2. **Listen.** Keep the stakeholder's exact words; they go to `provenance.answer`.
@@ -96,8 +98,13 @@ complete what a voice left open. These four happened in a real session; each is 
 | You wrote what an absent or silent voice would say, from what the other voice said or from their earlier answers | Nothing is attributed to a voice that did not say it. Ask that voice, or leave the question in `pending_questions` with `to_speaker` |
 
 The rule behind all four: **every mapping of a voice's words to a category of the schema — event vs
-state, failure mode, actor kind, policy mode, invariant vs validación, severity reason — is
+state, failure mode, actor kind, policy mode, a plazo as `delay` or as `time` (storm-process's
+`references/process-grammar.md`, "Time"), invariant vs validación, severity reason — is
 confirmed with the voice, and nothing is ever attributed to a voice that did not say it.**
+
+Names follow the same rule. No `name` field is ever yours — not a domain, a flow, a reaction, a
+thing looked at, a group of rules or an area: it is the voice's words, or the answer to a `nombre`
+or `nombre-flujo` question. Each level's reference says where that question goes.
 
 ## "No sé" is an answer
 
@@ -112,8 +119,8 @@ When a voice does not know, do not guess and do not drop the rule it did give. R
 3. Where a field needs the missing value, write `{desconocido: <hs-id>}` instead. Allowed in
    `commands[].actor`, `commands[].informed_by`, `commands[].failure_paths.<modo>`,
    `policies[].then`, `policies[].mode`, `events[].triggered_by`, `events[].failure_mode` and
-   `aggregates[].bounded_context` (only toward the open `frontera-candidata` that has not decided the
-   area). The rest of the rule enters the model as the voice said it.
+   `aggregates[].bounded_context` (only toward an open `level: design` hotspot; storm-design's
+   "Grouping" says which). The rest of the rule enters the model as the voice said it.
 
 ```
 Rosa:        Cuando vence, se le avisa solo, por mail. Qué lo manda, no sé.
@@ -152,16 +159,16 @@ The kind is recorded in `session.pending_questions.<slot>.kind`. Ask for cases, 
 | `invariante` | A term or aggregate needs its edges | "¿Qué haría que esto deje de ser un X?" |
 | `metáfora` | A term could be a total or a state | "¿Es más como un historial o como una foto?" |
 | `repregunta` | The answer contained "es lo mismo", "normalmente", "casi siempre", "depende" | Re-ask with a concrete case that separates the two readings |
-| `secuencia` | Ordering events into a flow | "¿Qué pasa justo antes? ¿Y justo después?" |
+| `secuencia` | Ordering events into a flow | "¿Qué pasa justo antes de <evento>?" — "¿y justo después?" is the next turn |
 | `disparador` | An event has no trigger (Process and later) | "¿Quién o qué hace que esto pase?" |
-| `exclusión` | Something was left out, or a scope edge appeared | "¿Esto lo dejamos fuera a propósito? ¿Por qué?" |
+| `exclusión` | Something was left out, or a scope edge appeared | "¿Esto lo dejamos fuera a propósito?" — the why is the next turn: "¿Por qué queda fuera?" |
 | `frontera` | The same word showed up in two areas | "Cuando <voz A> dice X y <voz B> dice X, ¿hablan de lo mismo?" |
 | `voces` | Unclear whose answer this is | "¿Esto lo dices tú o es como lo hace <área>?" |
-| `alcance` | Opening a session | "¿Qué entra en esto? ¿Qué no?" |
+| `alcance` | Opening a session | "¿Qué entra en esto?" — what stays out is an `exclusión`, its own turn |
 | `lectura` | What someone needs to see or know before deciding (a read model) | "Justo antes de <acción>, ¿qué necesitas ver para decidirlo?" |
-| `nombre` | A group of rules or an area is shown and still has no name | "¿Cómo le llaman ustedes a esto?" |
+| `nombre` | A reaction, a thing looked at, a group of rules or an area is confirmed and has no name in the voice's words yet | "¿Cómo le llaman ustedes a esto?" |
 | `nombre-flujo` | Events were grouped into one story and it has no name yet | "¿Cómo le llaman ustedes a esta historia?" |
-| `alternativas` | A decision was just confirmed and its discarded options were not asked | "¿Qué otra opción había, y por qué no?" — its own turn, after the decision's devolución |
+| `alternativas` | A decision was just confirmed and its discarded options were not asked | "¿Qué otra opción había?" — its own turn, after the decision's devolución; "¿Por qué no esa?" is the next one, per option |
 | `code_name` | Only when the stakeholder accepted fixing names for code | "¿En el código se llama igual o de otra forma?" |
 
 BAD: "¿Qué es un préstamo?" — invites a dictionary definition that everyone agrees with and nobody uses.

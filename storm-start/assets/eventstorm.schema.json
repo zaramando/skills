@@ -83,7 +83,7 @@
           "required": ["time"],
           "additionalProperties": false,
           "properties": {
-            "time": { "description": "When it happens, in the stakeholder's words", "$ref": "#/$defs/text" }
+            "time": { "description": "Pure calendar time with no event before it (\"a fin de mes\"), in the stakeholder's words. A plazo counted from an event is a policy delay: storm-process process-grammar.md \"Time\".", "$ref": "#/$defs/text" }
           }
         }
       }
@@ -372,7 +372,7 @@
           "else": { "$ref": "#/$defs/unknown" }
         },
         "delay": {
-          "description": "How long after the when event the then command happens, in the voice's words (\"al día siguiente\"). Optional.",
+          "description": "A plazo counted from the when event, in the voice's words (\"al día siguiente\"). Optional. Delay vs time: storm-process process-grammar.md \"Time\".",
           "$ref": "#/$defs/said"
         },
         "notes": { "$ref": "#/$defs/text" }
@@ -426,7 +426,7 @@
         "handles": { "type": "array", "items": { "$ref": "#/$defs/id_command" } },
         "emits": { "type": "array", "items": { "$ref": "#/$defs/id_event" } },
         "bounded_context": {
-          "description": "The area it belongs to, or {desconocido: hs-id} pointing to the open frontera-candidata that has not decided it yet.",
+          "description": "The area it belongs to, or {desconocido: hs-id} pointing to an open level: design hotspot the voice tied it to (a frontera-candidata, or a doubt about which area the group belongs to). See storm-design invariants-and-aggregates.md \"Grouping\".",
           "if": { "type": "string" },
           "then": { "$ref": "#/$defs/id_bounded_context" },
           "else": { "$ref": "#/$defs/unknown" }

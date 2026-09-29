@@ -81,14 +81,21 @@ with the severity its "Severity" section sets, and move on. This is the only pla
 | Level | Fills | Stops at |
 |-------|-------|----------|
 | `big-picture` | `events` (past tense, `pivotal`, `failure`; no triggers required yet), `actors` (`kind`), `external_systems`, `flows` (event timelines: `kind`, `lane`, `failure_of` for a camino de falla, `walked.big-picture`, `none_said` when the voice says there is no pivot or no camino de falla) | The whole domain as a timeline of events; boundaries only as `frontera-candidata` hotspots |
-| `process` | For the flujo elegido scope (below): `commands` (`actor`, `results_in`, `failure_paths`, `informed_by` only for an unknown read model), `policies` (`when` events → `then` command, `mode`, optional `delay`), `read_models` (`built_from`, `informs`), `triggered_by` on every event, `failure_mode` on a failure event whose way is unknown, `flows` extended with commands and policies, `walked.process` | Every event of the scope explained by a trigger, every command of the scope with its three failure paths resolved (an event, `no_aplica` or `desconocido`) |
-| `design` | `invariants`, `aggregates` (`invariants` by id, `handles`, `emits`, `bounded_context` — or `{desconocido}` toward the open frontera), `bounded_contexts`, `glossary[].bounded_context`, `glossary[].invariants` (by id), `glossary[].validations`, the `outcome` of each frontera decision, `code_name` decisions | Aggregates, invariants, bounded contexts. NO technical decisions (storage, APIs, frameworks): those become `open_questions` with `target: praxis-design` |
+| `process` | For the flujo elegido scope and the hechos pendientes (below): `commands` (`actor`, `results_in`, `failure_paths`, `informed_by` only for an unknown read model), `policies` (`when` events → `then` command, `mode`, optional `delay`), `read_models` (`built_from`, `informs`), `triggered_by` on every event, `failure_mode` on a failure event whose way is unknown, `flows` extended with commands and policies, `walked.process` | Every event of the scope and every hecho pendiente explained by a trigger, every command of the scope with its three failure paths resolved (an event, `no_aplica` or `desconocido`) |
+| `design` | `invariants`, `aggregates` (`invariants` by id, `handles`, `emits`, `bounded_context` — or `{desconocido}` toward an open `level: design` hotspot), `bounded_contexts`, `glossary[].bounded_context`, `glossary[].invariants` (by id), `glossary[].validations`, the `outcome` of each frontera decision, `code_name` decisions | Aggregates, invariants, bounded contexts. NO technical decisions (storage, APIs, frameworks): those become `open_questions` with `target: praxis-design` |
 
 **Flujo elegido.** The flows the Process level walks are the flows in `refs` of the current
 `level: process` decisions — those no later decision `supersedes`. A changed choice is a new
 decision with `supersedes: <the previous one>`; the old one stays as history and stops counting.
 The **flujo elegido scope** is those flows plus their caminos de falla (`failure_of` one of them):
 the process gates look only there, never at flows the stakeholder left out.
+
+**Hechos pendientes.** An event that an open `level: big-picture` hotspot `refs` (a "no sé" to a
+secuencia or placement question, e.g. "Intereses devengados") is in no flow, so no flujo elegido
+reaches it. Process still asks its trigger, chosen flow or not; only its trigger — a command it
+names enters `commands` with its actor, but no camino de falla is asked for it. The
+`event-triggers` gate covers the flujo elegido scope plus the hechos pendientes. This is the only
+place the rule lives.
 
 ## Closing a level
 

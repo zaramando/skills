@@ -52,14 +52,21 @@ Then:
    question (kind `invariante`): "¿Esto tiene que ser verdad al mismo tiempo que aquello, o puede
    ponerse al día después?" "Al mismo tiempo" puts them inside the same frontera; "después" leaves
    one outside.
-2. Show the group as a plain list of rules plus the commands that touch them. Do not propose a name.
-   Ask: "¿Cómo le llaman ustedes a esto?" (kind `nombre`). If they have no name, the group is not
-   written; the question stays in `pending_questions.design`.
+2. Show the group as a plain list of rules plus the commands that touch them. Do not propose a name
+   (the protocol's anti-completado, names). Ask: "¿Cómo le llaman ustedes a esto?" (kind `nombre`).
+   If they have no name, the group is not written; the question stays in `pending_questions.design`.
 3. On a name and a yes, write the aggregate: `invariants` (the ids of the rules), `handles` (the
-   commands), `emits` (the `results_in` of those commands), `bounded_context` (from step 7; if no
-   context exists yet, do step 7 first; if the area waits on an open `frontera-candidata`, write
-   `{desconocido: <that hotspot's id>}` — `agg-ejemplar` in the fixture), `provenance` with the
-   naming question and answer.
+   commands), `emits` (the `results_in` of those commands), `provenance` with the naming question
+   and answer, and `bounded_context`, which the voice places — never you:
+   - A confirmed context the voice names → its `bc-` id. No context exists yet → do step 7 first.
+   - The voice says the area waits on an open `frontera-candidata` → `{desconocido: <that hotspot>}`
+     (`agg-ejemplar` in the fixture).
+   - The voice does not know → ask about each open `frontera-candidata`, one per turn: "¿El área de
+     <grupo> depende de cómo se decida <palabra>?" A yes → that hotspot. No yes → the protocol's
+     "'No sé' is an answer": group first with an open `level: design` doubt of the same theme, or
+     open a `desconocido`, `level: design`: "¿A qué área pertenece <grupo>?" Write
+     `{desconocido: <that hotspot>}`.
+   A frontera nobody tied to the group is never picked because it looks closest.
 
 A derived number is a signal, not an aggregate rule: if a value "sale de" other records, it is
 built from events (a read model already listed by Process) and sits outside the frontera.

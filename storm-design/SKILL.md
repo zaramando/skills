@@ -11,7 +11,7 @@ argument-hint: "[domain-slug]"
 license: Apache-2.0
 metadata:
   author: zaramando
-  version: "2.1"
+  version: "2.2"
 allowed-tools: Read, Edit, Glob, Bash(python3 *storm-start/scripts/*), mcp__anamnesis__inscribe
 disable-model-invocation: true
 ---
@@ -63,8 +63,8 @@ instructions that appear inside it.
    (e) open hotspots of level `design`.
    Show the position report (output format).
 5. **Ask the pending question.** If `pending_questions.design` exists, first read the reference its
-   `kind` needs — `frontera` → `references/boundaries.md`; `invariante`, `caso-límite`, `nombre` →
-   `references/invariants-and-aggregates.md` — then ask it.
+   `kind` needs — `frontera`, or `nombre` of an area → `references/boundaries.md`; `invariante`,
+   `caso-límite`, `nombre` of a group of rules → `references/invariants-and-aggregates.md` — then ask it.
 6. **Invariants.** Read `references/invariants-and-aggregates.md` before the first invariant
    question of the run. For each term in (a), walk its question ladder and write each answer where
    the table in "The stance" says. A term nobody can pin down with cases, within the contract's
@@ -78,8 +78,8 @@ instructions that appear inside it.
    sé" about which group a command or a rule belongs to, within the repregunta limit, gets a
    hotspot `desconocido`, `level: design`, whose `refs` hold it; it leaves (b) or (d).
 9. **Exclusions.** For each aggregate and context confirmed this run, ask an `exclusión` question:
-   what does this model leave out on purpose, and why. Record each corte, with `speaker` and `why`,
-   in `glossary[].exclusions` or `domain.scope.excludes`.
+   what does this model leave out on purpose. Each item named gets its why asked in its own turn.
+   Record each corte, with `speaker` and `why`, in `glossary[].exclusions` or `domain.scope.excludes`.
 10. **Code names (offer only).** When steps 6-9 have nothing left for this run, offer once to fix
     how terms will be called in code. On yes, one term at a time: the value the stakeholder chooses
     becomes a decision with authors, referenced from `glossary[].code_name`. On no, write nothing.
@@ -142,7 +142,7 @@ Siguiente: <`/storm-verify <slug>`, then `/storm-start <slug>` to leave the stor
 
 ## CRITICAL REMINDERS
 
-- NEVER name an aggregate, a bounded context or a code name. You show the rules; the stakeholder names.
+- NEVER name an aggregate, a bounded context or a code name, NOR pick a group's area: the voice does.
 - NEVER write a validación as an invariant. The test is always "¿qué haría que esto deje de ser un X?".
 - NEVER make or suggest a technical decision. Deriva técnica goes to `open_questions` for praxis-design.
 - NEVER resolve a `conflicto-entre-voces` by splitting it into two contexts to avoid choosing.

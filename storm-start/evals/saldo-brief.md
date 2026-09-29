@@ -65,8 +65,10 @@ h. **The failed desembolso is not invented.** "No se sabe qué pasa si falla el 
    desconocido or a hotspot, never a guessed failure event.
 i. **Two kinds of policy.** The automatic one (penalidad) and the manual one (reintento de cobro)
    are told apart, and both are in the model.
-j. **Time is recorded.** The time triggers (5 días; devengo a fin de mes) are `time` triggers, and
-   the reintento's "al día siguiente" is its policy's `delay`.
+j. **Time is recorded by the rule.** A plazo counted from an event is a policy `delay`; pure
+   calendar is a `time` trigger. So "a los 5 días" is the `delay` of the penalidad's policy, "al día
+   siguiente" the `delay` of the reintento's policy, and "a fin de mes" the `time` trigger of the
+   devengo's event.
 k. **"No sé" does not loop.** No question repeats more than the contract's repregunta limit (2);
    each unanswered one becomes an open hotspot and the session moves on. Process can close with
    those "no sé" as `no-bloqueante` desconocidos.
