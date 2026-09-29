@@ -1,0 +1,26 @@
+{
+  "_about": "Single source of the sticky palette and of the board marks (pivot, failure path). render.py reads it and draws the legend from it; every other file points here instead of repeating a color. Sticky colors are paper colors: identical in light and dark mode, always with dark ink.",
+  "ink": "#1d1b16",
+  "kinds": {
+    "events":           { "label": "Evento",          "fill": "#ff9f43", "size": "normal", "meaning": "Algo que pasó en el dominio, en pasado" },
+    "commands":         { "label": "Comando",         "fill": "#6fa8ff", "size": "normal", "meaning": "Una intención de alguien: lo que se pide que pase" },
+    "policies":         { "label": "Política",        "fill": "#c9a7f5", "size": "normal", "meaning": "Cada vez que X, entonces Y" },
+    "actors":           { "label": "Actor",           "fill": "#fff4b0", "size": "small",  "meaning": "Quién da la orden" },
+    "aggregates":       { "label": "Agregado",        "fill": "#ffd84d", "size": "normal", "meaning": "Lo que protege las reglas que nunca se rompen" },
+    "read_models":      { "label": "Vista",           "fill": "#7ed98b", "size": "normal", "meaning": "Lo que alguien mira para decidir" },
+    "external_systems": { "label": "Sistema externo", "fill": "#ffa8d0", "size": "normal", "meaning": "Algo fuera del alcance que dispara o recibe" },
+    "hotspots":         { "label": "Punto caliente",  "fill": "#e8246f", "ink": "#ffffff", "size": "normal", "meaning": "Duda, conflicto o ambigüedad sin resolver" },
+    "opportunities":    { "label": "Oportunidad",     "fill": "#c8f2c0", "size": "normal", "meaning": "Algo que se podría mejorar" },
+    "decisions":        { "label": "Decisión",        "fill": "#ffffff", "border": "#1d1b16", "size": "normal", "meaning": "Una elección con autor, motivo y alternativas descartadas" }
+  },
+  "marks": {
+    "pivotal": { "label": "Evento pivote",   "color": "#1d1b16", "meaning": "Después de este evento cambia todo lo que sigue" },
+    "failure": { "label": "Camino de falla", "color": "#c0392b", "meaning": "Lo que pasa cuando el flujo principal sale mal" }
+  },
+  "status": {
+    "hipótesis-sin-autor": { "label": "Hipótesis sin autor", "border_style": "dotted", "meaning": "Nadie la adoptó todavía; no cuenta como modelo" },
+    "propuesto":           { "label": "Propuesto",           "border_style": "none",   "meaning": "Alguien lo dijo; falta la confirmación de la devolución" },
+    "confirmado":          { "label": "Confirmado",          "border_style": "none",   "meaning": "Quien lo dijo confirmó la devolución" },
+    "disputado":           { "label": "Disputado",           "border_style": "double", "meaning": "Dos voces lo dicen distinto; tiene un punto caliente abierto" }
+  }
+}

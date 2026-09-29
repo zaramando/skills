@@ -1,0 +1,43 @@
+# eventstorm.yaml — source of truth for one modeling workspace.
+# Contract: eventstorm.schema.json (storm-start/assets). eventstorm.html is generated from this file:
+# never edit the HTML by hand.
+schema_version: "3.1"
+
+domain:
+  name: "<nombre del dominio, en palabras del stakeholder>"
+  slug: "<slug-del-directorio>"
+  language: "<idioma del stakeholder>"
+  scope:
+    includes: []
+    excludes: []   # - {what: ..., why: ..., speaker: sp-...}
+  sources: []      # - {path: ..., kind: transcripción|documento|código-legado|otro}
+
+speakers: []       # - {id: sp-..., name: ..., role: ..., default: true}
+
+session:
+  current_level: big-picture
+  levels:
+    big-picture: {state: abierto}
+    process: {state: pendiente}
+    design: {state: pendiente}
+  # stage: exploración   # set by the level skill: where the current level stands
+  # pending_questions:   # one slot per owner: start, big-picture, process, design
+  #   start: {text: ..., kind: alcance}
+  next_step: "Fijar alcance y voces"
+  updated: "YYYY-MM-DD"
+
+events: []
+commands: []
+actors: []
+policies: []
+read_models: []
+external_systems: []
+aggregates: []
+hotspots: []
+opportunities: []
+bounded_contexts: []
+flows: []
+invariants: []     # referenced by id from glossary[].invariants and aggregates[].invariants
+glossary: []
+decisions: []
+open_questions: []

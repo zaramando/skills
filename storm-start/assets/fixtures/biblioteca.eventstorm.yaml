@@ -1,0 +1,606 @@
+# Canonical fixture: "libro" is the copy on the shelf for circulación and the title for catálogo.
+# Valid under verify.py; fails `verify.py --close design` on purpose, on blocking-hotspots alone
+# (hs-libro-ejemplar: its cases got opposite verdicts, so it is bloqueante by rule).
+# Also shows: one hotspot holding several "no sé" (hs-quien-avisa, hs-aviso-reserva), desconocido in
+# triggered_by, policies.then and policies.mode, an aggregate whose area waits for the open frontera
+# (agg-ejemplar), and a policy delay in the voice's words (pol-avisar-reserva).
+schema_version: "3.1"
+
+domain:
+  name: "Préstamos de la biblioteca"
+  slug: biblioteca
+  language: es
+  scope:
+    includes:
+      - "Préstamo, devolución y vencimiento de libros"
+      - "Multas por atraso"
+    excludes:
+      - what: "Compra de libros nuevos"
+        why: "La maneja adquisiciones, con su propio presupuesto"
+        speaker: sp-tomas
+  sources:
+    - path: "legacy/circulacion/bloqueo_nocturno.sql"
+      kind: código-legado
+      note: "Job nocturno que bloquea socios"
+
+speakers:
+  - id: sp-rosa
+    name: Rosa
+    role: Bibliotecaria de circulación
+  - id: sp-tomas
+    name: Tomás
+    role: Encargado de catálogo
+
+session:
+  current_level: design
+  levels:
+    big-picture: {state: cerrado, closed_on: "2026-09-10"}
+    process: {state: cerrado, closed_on: "2026-09-18"}
+    design: {state: abierto}
+  pending_questions:
+    design:
+      text: "Si llega una segunda copia de un título que ya tienen, ¿quién de ustedes decide si es un libro más o el mismo libro?"
+      kind: frontera
+      about: hs-libro-ejemplar
+      to_speaker: sp-tomas
+  next_step: "Decidir si 'libro' es uno solo o uno por área; hasta entonces 'El ejemplar' queda sin área"
+  updated: "2026-09-28"
+
+events:
+  - id: ev-libro-prestado
+    name: "Libro prestado"
+    status: confirmado
+    speaker: sp-rosa
+    terms: [libro, préstamo]
+    pivotal: true
+    triggered_by: [cmd-prestar-libro]
+    provenance: {kind: respuesta, question: "Piensa en el último libro que salió, de punta a punta. ¿Qué pasó?", answer: "El socio trae el libro al mostrador y se lo presto"}
+  - id: ev-prestamo-rechazado
+    name: "Préstamo rechazado"
+    status: confirmado
+    speaker: sp-rosa
+    terms: [préstamo]
+    failure: true
+    triggered_by: [cmd-prestar-libro]
+    provenance: {kind: respuesta, question: "¿Qué pasa cuando eso sale mal?", answer: "Si tiene una multa sin pagar, el préstamo se rechaza"}
+  - id: ev-libro-devuelto
+    name: "Libro devuelto"
+    status: confirmado
+    speaker: sp-rosa
+    terms: [libro, devolución]
+    triggered_by: [cmd-registrar-devolucion]
+    provenance: {kind: respuesta, question: "¿Y después?", answer: "Lo devuelve, en el mostrador o en el buzón"}
+  - id: ev-prestamo-vencido
+    name: "Préstamo vencido"
+    status: confirmado
+    speaker: sp-rosa
+    terms: [préstamo]
+    failure: true
+    triggered_by: [{time: "cuando pasan los 14 días y el libro no volvió"}]
+    provenance: {kind: respuesta, question: "¿Hay algo que pase aunque nadie haga nada?", answer: "A los 14 días, si no volvió, el préstamo vence"}
+  - id: ev-multa-generada
+    name: "Multa generada"
+    status: confirmado
+    speaker: sp-rosa
+    terms: [multa]
+    triggered_by: [cmd-generar-multa]
+    provenance: {kind: respuesta, question: "¿Y cuando vence?", answer: "Se genera la multa, un tanto por cada día"}
+  - id: ev-socio-avisado
+    name: "Socio avisado"
+    status: confirmado
+    speaker: sp-rosa
+    triggered_by: [cmd-avisar-socio]
+    provenance: {kind: respuesta, question: "¿Y el socio se entera?", answer: "Se le avisa solo, por mail"}
+  - id: ev-multa-pagada
+    name: "Multa pagada"
+    status: confirmado
+    speaker: sp-rosa
+    terms: [multa]
+    triggered_by: [cmd-cobrar-multa]
+    provenance: {kind: respuesta, question: "¿Y la multa?", answer: "La paga cuando devuelve, en el mostrador"}
+  - id: ev-ejemplar-catalogado
+    name: "Ejemplar catalogado"
+    status: confirmado
+    speaker: sp-tomas
+    terms: [ejemplar]
+    triggered_by: [ext-catalogo-red]
+    provenance: {kind: respuesta, question: "Tomás, ¿qué pasa de tu lado antes de que un libro se pueda prestar?", answer: "El ejemplar se cataloga con el registro que manda la red"}
+  - id: ev-libro-reservado
+    name: "Libro reservado"
+    status: confirmado
+    speaker: sp-rosa
+    terms: [libro]
+    triggered_by: [{desconocido: hs-aviso-reserva}]
+    provenance: {kind: respuesta, question: "¿Hay algo más que pase con un libro que está afuera?", answer: "Otro socio lo puede reservar"}
+  - id: ev-prestamo-renovado
+    name: "Préstamo renovado"
+    status: confirmado
+    speaker: sp-rosa
+    terms: [préstamo]
+    provenance: {kind: respuesta, question: "¿Qué más le puede pasar a un préstamo?", answer: "Se puede renovar una vez"}
+  - id: ev-socio-bloqueado
+    name: "Socio bloqueado"
+    status: hipótesis-sin-autor
+    provenance: {kind: fuente, source: "legacy/circulacion/bloqueo_nocturno.sql", note: "El job pone bloqueado=1 con tres multas; nadie lo mencionó en la sesión"}
+
+commands:
+  - id: cmd-prestar-libro
+    name: "Prestar libro"
+    status: confirmado
+    speaker: sp-rosa
+    terms: [libro, préstamo]
+    actor: act-bibliotecaria
+    results_in: [ev-libro-prestado, ev-prestamo-rechazado]
+    failure_paths:
+      rechazo: ev-prestamo-rechazado
+      error: {desconocido: hs-prestamo-error}
+      demora: {no_aplica: true, words: "El préstamo se hace con el socio enfrente: sale en el momento o no sale", speaker: sp-rosa}
+    provenance: {kind: respuesta, question: "¿Quién da la orden de prestar?", answer: "Yo, en el mostrador"}
+  - id: cmd-registrar-devolucion
+    name: "Registrar devolución"
+    status: confirmado
+    speaker: sp-rosa
+    terms: [devolución]
+    actor: act-bibliotecaria
+    results_in: [ev-libro-devuelto]
+    failure_paths:
+      rechazo: {no_aplica: true, words: "Un libro nuestro que vuelve siempre se recibe, aunque venga roto", speaker: sp-rosa}
+      error: {no_aplica: true, words: "Si el sistema no anda, lo anoto en papel y lo cargo después con la fecha de ese día", speaker: sp-rosa}
+      demora: {no_aplica: true, words: "Devolver tarde no cambia cómo se registra; lo que pasa es la multa", speaker: sp-rosa}
+    provenance: {kind: respuesta, question: "¿Quién registra la devolución?", answer: "Yo, cuando lo recibo o cuando vacío el buzón"}
+  - id: cmd-generar-multa
+    name: "Generar multa"
+    status: confirmado
+    speaker: sp-rosa
+    terms: [multa]
+    actor: act-sistema-circulacion
+    results_in: [ev-multa-generada]
+    failure_paths:
+      rechazo: {no_aplica: true, words: "La multa no se discute en el sistema; si el socio reclama, se anula aparte", speaker: sp-rosa}
+      error: {no_aplica: true, words: "Si una noche no corre, la noche siguiente suma los días igual", speaker: sp-rosa}
+      demora: {no_aplica: true, words: "Se cuenta por días de atraso; que salga tarde no cambia el monto", speaker: sp-rosa}
+    provenance: {kind: respuesta, question: "¿Quién o qué genera la multa?", answer: "El sistema de circulación, solo, cada noche"}
+  - id: cmd-avisar-socio
+    name: "Avisar al socio"
+    status: confirmado
+    speaker: sp-rosa
+    actor: {desconocido: hs-quien-avisa}
+    informed_by: {desconocido: hs-quien-avisa}
+    results_in: [ev-socio-avisado]
+    failure_paths:
+      rechazo: {no_aplica: true, words: "Es un aviso; nadie lo tiene que aceptar", speaker: sp-rosa}
+      error: {desconocido: hs-quien-avisa}
+      demora: {no_aplica: true, words: "Si llega al otro día, la multa es la misma", speaker: sp-rosa}
+    provenance: {kind: respuesta, question: "Cada vez que un préstamo vence, ¿qué tiene que pasar sí o sí?", answer: "Se le avisa solo, por mail. Qué lo manda, no sé"}
+  - id: cmd-cobrar-multa
+    name: "Cobrar multa"
+    status: confirmado
+    speaker: sp-rosa
+    terms: [multa]
+    actor: act-bibliotecaria
+    results_in: [ev-multa-pagada]
+    failure_paths:
+      rechazo: {no_aplica: true, words: "Si no la puede pagar, no se cobra: queda pendiente", speaker: sp-rosa}
+      error: {no_aplica: true, words: "Es en efectivo, en el mostrador; no hay nada que falle", speaker: sp-rosa}
+      demora: {no_aplica: true, words: "La paga cuando vuelve; no hay pago tarde", speaker: sp-rosa}
+    provenance: {kind: respuesta, question: "¿Quién cobra la multa?", answer: "Yo, cuando devuelve"}
+
+actors:
+  - id: act-socio
+    name: "Socio"
+    kind: externo
+    status: confirmado
+    speaker: sp-rosa
+    provenance: {kind: respuesta, question: "¿A quién le importa que el libro salga?", answer: "Al socio, que se lo lleva"}
+  - id: act-bibliotecaria
+    name: "Bibliotecaria de mostrador"
+    kind: persona
+    status: confirmado
+    speaker: sp-rosa
+    provenance: {kind: respuesta, question: "¿Quién da la orden de prestar?", answer: "Yo, en el mostrador"}
+  - id: act-sistema-circulacion
+    name: "Sistema de circulación"
+    kind: sistema
+    status: confirmado
+    speaker: sp-rosa
+    provenance: {kind: respuesta, question: "¿Quién o qué genera la multa?", answer: "El sistema de circulación, solo, cada noche"}
+
+policies:
+  - id: pol-multar-vencido
+    name: "Multar cada día de atraso"
+    status: confirmado
+    speaker: sp-rosa
+    when: [ev-prestamo-vencido]
+    then: cmd-generar-multa
+    mode: automática
+    provenance: {kind: respuesta, question: "Cada vez que un préstamo vence, ¿qué tiene que pasar sí o sí?", answer: "Cada día que pasa vencido, el sistema le suma la multa solo"}
+  - id: pol-avisar-vencido
+    name: "Avisar cuando vence"
+    status: confirmado
+    speaker: sp-rosa
+    when: [ev-prestamo-vencido]
+    then: cmd-avisar-socio
+    mode: automática
+    provenance: {kind: respuesta, question: "¿Eso lo hace el sistema solo, o una persona decide si se hace?", answer: "Solo; nadie lo manda a mano"}
+  - id: pol-cobrar-al-devolver
+    name: "Cobrar la multa al devolver"
+    status: confirmado
+    speaker: sp-rosa
+    when: [ev-libro-devuelto]
+    then: cmd-cobrar-multa
+    mode: manual
+    provenance: {kind: respuesta, question: "Cada vez que un libro vuelve, ¿qué tiene que pasar?", answer: "Yo veo si tiene multa y decido si se la cobro ahí o le doy plazo"}
+  - id: pol-avisar-reserva
+    name: "Avisar a quien lo reservó"
+    status: confirmado
+    speaker: sp-rosa
+    when: [ev-libro-devuelto]
+    then: {desconocido: hs-aviso-reserva}
+    mode: {desconocido: hs-aviso-reserva}
+    delay: {words: "ese mismo día", speaker: sp-rosa}
+    provenance: {kind: respuesta, question: "Cada vez que un libro vuelve, ¿qué más tiene que pasar sí o sí?", answer: "Si alguien lo reservó, hay que avisarle ese mismo día; cómo se avisa, no sé, eso lo hace la web"}
+
+read_models:
+  - id: rm-ficha-socio
+    name: "Ficha del socio"
+    status: confirmado
+    speaker: sp-rosa
+    built_from: [ev-libro-prestado, ev-libro-devuelto, ev-multa-generada, ev-multa-pagada]
+    informs: [cmd-prestar-libro, cmd-cobrar-multa]
+    provenance: {kind: respuesta, question: "Justo antes de prestar, ¿qué necesitas ver para decidirlo?", answer: "La ficha del socio: qué tiene afuera y si debe multas"}
+
+external_systems:
+  - id: ext-catalogo-red
+    name: "Catálogo de la red de bibliotecas"
+    status: confirmado
+    speaker: sp-tomas
+    provenance: {kind: respuesta, question: "¿De dónde viene el registro del ejemplar?", answer: "Del catálogo de la red; nosotros no lo escribimos"}
+
+aggregates:
+  - id: agg-prestamo
+    name: "Préstamo"
+    status: confirmado
+    speaker: sp-rosa
+    terms: [préstamo]
+    bounded_context: bc-circulacion
+    invariants: [inv-prestado-no-se-presta]
+    handles: [cmd-prestar-libro, cmd-registrar-devolucion]
+    emits: [ev-libro-prestado, ev-prestamo-rechazado, ev-libro-devuelto]
+    provenance: {kind: respuesta, question: "Prestar y registrar la devolución tienen que respetar esa regla en el mismo instante. ¿Cómo le llaman a eso?", answer: "El préstamo"}
+  - id: agg-multa
+    name: "Multa"
+    status: confirmado
+    speaker: sp-rosa
+    terms: [multa]
+    bounded_context: bc-circulacion
+    invariants: [inv-multa-por-atraso]
+    handles: [cmd-generar-multa, cmd-cobrar-multa]
+    emits: [ev-multa-generada, ev-multa-pagada]
+    provenance: {kind: respuesta, question: "Generar y cobrar la multa respetan esa regla. ¿Cómo le llaman a eso?", answer: "La multa del socio"}
+  - id: agg-ejemplar
+    name: "Ejemplar"
+    status: confirmado
+    speaker: sp-tomas
+    terms: [ejemplar]
+    bounded_context: {desconocido: hs-libro-ejemplar}
+    invariants: [inv-ejemplar-con-codigo]
+    provenance: {kind: respuesta, question: "Que cada copia tenga su código propio es una regla que no se rompe. ¿Cómo le llaman a eso?", answer: "El ejemplar"}
+
+hotspots:
+  - id: hs-libro-ejemplar
+    question: "Cuando Rosa dice 'libro' y Tomás dice 'libro', ¿hablan de lo mismo, o el libro de Rosa es lo que Tomás llama 'ejemplar'?"
+    type: frontera-candidata
+    severity: bloqueante
+    level: design
+    refs: [gl-libro-circulacion, gl-libro-catalogo, gl-ejemplar]
+    resolution: abierto
+    status: confirmado
+    speaker: sp-tomas
+    provenance: {kind: respuesta, question: "Si llega una segunda copia de 'Rayuela', ¿es un libro más?", answer: "Para mí no: es otro ejemplar del mismo libro"}
+  - id: hs-devolucion-buzon
+    question: "Un libro que cae en el buzón de noche, ¿está devuelto cuando cae o cuando se registra?"
+    type: conflicto-entre-voces
+    severity: bloqueante
+    level: process
+    refs: [gl-devolucion, ev-libro-devuelto]
+    positions:
+      - speaker: sp-rosa
+        says: "Está devuelto cuando lo registro; antes no sé si está"
+      - speaker: sp-tomas
+        says: "Está devuelto cuando cae; el socio ya lo dejó"
+    resolution: resuelto
+    resolved_by: dec-devolucion-buzon
+    status: confirmado
+    speaker: sp-rosa
+    provenance: {kind: pregunta, question: "Si el socio deja el libro en el buzón el domingo a la noche, ¿cuándo quedó devuelto?"}
+  - id: hs-plazo
+    question: "¿Los 14 días del préstamo son corridos o hábiles?"
+    type: ambigüedad
+    severity: bloqueante
+    raised_by: sp-rosa
+    level: process
+    refs: [ev-prestamo-vencido]
+    resolution: resuelto
+    resolved_by: dec-plazo-corridos
+    status: confirmado
+    speaker: sp-rosa
+    provenance: {kind: respuesta, question: "¿Esto nos impide seguir?", answer: "Sí, sin eso no sé cuándo vence nada"}
+  - id: hs-prestamo-error
+    question: "¿Qué pasa si al prestar el libro algo falla?"
+    type: desconocido
+    severity: no-bloqueante
+    level: process
+    refs: [cmd-prestar-libro]
+    resolution: abierto
+    status: confirmado
+    speaker: sp-rosa
+    provenance: {kind: respuesta, question: "¿Y si al prestar algo falla?", answer: "No sé; nunca pasó"}
+  - id: hs-quien-avisa
+    question: "¿Qué manda el mail cuando un préstamo vence?"
+    type: desconocido
+    severity: no-bloqueante
+    level: process
+    refs: [cmd-avisar-socio, pol-avisar-vencido]
+    resolution: abierto
+    status: confirmado
+    speaker: sp-rosa
+    provenance: {kind: respuesta, question: "¿Quién o qué manda ese aviso?", answer: "Qué lo manda, no sé"}
+  - id: hs-aviso-reserva
+    question: "¿Cómo funciona la reserva: qué la hace entrar y qué avisa cuando el libro vuelve?"
+    type: desconocido
+    severity: no-bloqueante
+    level: process
+    refs: [ev-libro-reservado, pol-avisar-reserva]
+    resolution: abierto
+    status: confirmado
+    speaker: sp-rosa
+    provenance: {kind: respuesta, question: "¿Quién o qué hace que un libro quede reservado?", answer: "No sé, es lo mismo que el aviso: la reserva la maneja la web"}
+  - id: hs-aviso-grupo
+    question: "Avisar al socio, ¿tiene que respetar alguna regla del préstamo o de la multa en el mismo instante?"
+    type: desconocido
+    severity: no-bloqueante
+    level: design
+    refs: [cmd-avisar-socio]
+    resolution: abierto
+    status: confirmado
+    speaker: sp-rosa
+    provenance: {kind: respuesta, question: "Cuando se avisa al socio, ¿qué regla no puede quedar rota ni un segundo?", answer: "No sé; el aviso lo manda otra cosa, no nosotros"}
+  - id: hs-renovacion-orden
+    question: "¿En qué momento del préstamo entra la renovación?"
+    type: desconocido
+    severity: no-bloqueante
+    level: big-picture
+    refs: [ev-prestamo-renovado]
+    resolution: abierto
+    status: confirmado
+    speaker: sp-rosa
+    provenance: {kind: respuesta, question: "¿La renovación pasa antes o después de que el préstamo vence?", answer: "No sé en qué momento entra eso"}
+  - id: hs-bloqueo-sin-autor
+    question: "El código legado bloquea socios con tres multas. ¿Alguien de la biblioteca decidió esa regla?"
+    type: complejidad-sin-autor
+    severity: no-bloqueante
+    level: design
+    refs: [ev-socio-bloqueado]
+    resolution: abierto
+    status: hipótesis-sin-autor
+    provenance: {kind: fuente, source: "legacy/circulacion/bloqueo_nocturno.sql"}
+
+opportunities:
+  - id: op-aviso-previo
+    name: "Avisar antes de que venza, no después"
+    status: propuesto
+    speaker: sp-rosa
+    refs: [ev-prestamo-vencido, ev-socio-avisado]
+    provenance: {kind: respuesta, question: "¿Qué parte de esta historia les cuesta más hoy?", answer: "Las multas: si les avisáramos antes, la mitad no existiría"}
+
+bounded_contexts:
+  - id: bc-circulacion
+    name: "Circulación"
+    purpose: "Que cada libro que sale vuelva, y que el atraso se cobre"
+    status: confirmado
+    speaker: sp-rosa
+    provenance: {kind: respuesta, question: "¿Qué parte de esto es solo tuya?", answer: "Lo que sale y vuelve, y las multas"}
+
+flows:
+  - id: fl-prestamo
+    name: "Préstamo y devolución"
+    kind: principal
+    lane: circulación
+    status: confirmado
+    speaker: sp-rosa
+    steps: [act-socio, act-bibliotecaria, rm-ficha-socio, cmd-prestar-libro, agg-prestamo, ev-libro-prestado, cmd-registrar-devolucion, ev-libro-devuelto, pol-cobrar-al-devolver, cmd-cobrar-multa, agg-multa, ev-multa-pagada]
+    walked: {big-picture: true, process: true}
+    provenance: {kind: pregunta, question: "Cuéntame un préstamo de punta a punta, en orden"}
+  - id: fl-prestamo-rechazado
+    name: "Falla: el préstamo no sale"
+    kind: falla
+    failure_of: fl-prestamo
+    lane: circulación
+    status: confirmado
+    speaker: sp-rosa
+    steps: [cmd-prestar-libro, ev-prestamo-rechazado]
+    walked: {big-picture: true, process: true}
+    provenance: {kind: respuesta, question: "¿Qué pasa cuando el préstamo no llega a salir?", answer: "Si debe una multa, se rechaza y se va sin el libro"}
+  - id: fl-vencimiento
+    name: "Falla: el libro no vuelve a tiempo"
+    kind: falla
+    failure_of: fl-prestamo
+    lane: circulación
+    status: confirmado
+    speaker: sp-rosa
+    steps: [ev-prestamo-vencido, pol-multar-vencido, act-sistema-circulacion, cmd-generar-multa, agg-multa, ev-multa-generada, pol-avisar-vencido, cmd-avisar-socio, ev-socio-avisado]
+    walked: {big-picture: true, process: true}
+    provenance: {kind: respuesta, question: "¿Qué pasa cuando el libro no vuelve?", answer: "A los 14 días vence, se genera la multa y se le avisa"}
+  - id: fl-catalogacion
+    name: "Alta de ejemplares"
+    kind: principal
+    lane: catálogo
+    status: confirmado
+    speaker: sp-tomas
+    steps: [ext-catalogo-red, ev-ejemplar-catalogado]
+    walked: {big-picture: true, process: true}
+    none_said:
+      pivot: {words: "No, eso es siempre igual: llega el registro y se cataloga", speaker: sp-tomas}
+      failure: {words: "Si la red no manda el registro, el ejemplar no existe todavía para nosotros; no pasa nada más", speaker: sp-tomas}
+    provenance: {kind: respuesta, question: "Tomás, ¿cómo entra un ejemplar?", answer: "Llega el registro de la red y se cataloga"}
+  - id: fl-reserva
+    name: "Reserva"
+    kind: principal
+    lane: circulación
+    status: confirmado
+    speaker: sp-rosa
+    steps: [act-socio, ev-libro-reservado]
+    walked: {big-picture: true}
+    none_said:
+      pivot: {words: "No cambia nada; el libro sigue afuera hasta que vuelve", speaker: sp-rosa}
+      failure: {words: "Si no vuelve, lo que pasa es lo del vencimiento; la reserva espera", speaker: sp-rosa}
+    provenance: {kind: pregunta, question: "¿Y una reserva, desde que el socio la pide?"}
+
+invariants:
+  - id: inv-prestado-no-se-presta
+    statement: "Un libro prestado no se presta de nuevo hasta que vuelve"
+    status: confirmado
+    speaker: sp-rosa
+    provenance: {kind: respuesta, question: "¿Qué haría que esto deje de ser un préstamo?", answer: "Que el libro esté prestado a dos a la vez; eso ya es un error"}
+  - id: inv-multa-por-atraso
+    statement: "La multa sale solo de los días de atraso; nadie la pone a mano"
+    status: confirmado
+    speaker: sp-rosa
+    provenance: {kind: respuesta, question: "¿Qué haría que algo deje de ser una multa?", answer: "Que no salga de días de atraso; eso sería un cobro, no una multa"}
+  - id: inv-ejemplar-con-codigo
+    statement: "Un ejemplar tiene su código de barras propio"
+    status: confirmado
+    speaker: sp-tomas
+    provenance: {kind: respuesta, question: "¿Qué haría que esto deje de ser un ejemplar?", answer: "Sin código no es un ejemplar: es un libro que llegó y nadie catalogó"}
+
+glossary:
+  - id: gl-libro-circulacion
+    term: libro
+    context: circulación
+    bounded_context: bc-circulacion
+    in_their_words: "Lo que está en el estante y se lleva el socio"
+    edge_cases:
+      - {case: "Una segunda copia de un título que ya tenemos", verdict: es, why: "Es otro libro: lo presto aunque el primero esté afuera", speaker: sp-rosa}
+    metaphor: {kind: foto, text: "Lo que ves en el estante hoy"}
+    status: confirmado
+    speaker: sp-rosa
+    provenance: {kind: respuesta, question: "Si un socio pide 'Rayuela' y hay dos en el estante, ¿cuántos libros hay?", answer: "Dos libros"}
+  - id: gl-libro-catalogo
+    term: libro
+    context: catálogo
+    in_their_words: "La obra: un título con su autor, tenga las copias que tenga"
+    edge_cases:
+      - {case: "Una segunda copia de un título que ya tenemos", verdict: no-es, why: "No es otro libro; es otro ejemplar del mismo libro", speaker: sp-tomas}
+    status: confirmado
+    speaker: sp-tomas
+    provenance: {kind: respuesta, question: "Si hay dos 'Rayuela' en el estante, ¿cuántos libros hay?", answer: "Uno, con dos ejemplares"}
+  - id: gl-ejemplar
+    term: ejemplar
+    context: catálogo
+    in_their_words: "Cada copia física, con su código de barras"
+    invariants: [inv-ejemplar-con-codigo]
+    status: confirmado
+    speaker: sp-tomas
+    provenance: {kind: respuesta, question: "¿Qué haría que esto deje de ser un ejemplar?", answer: "Sin código no es un ejemplar"}
+  - id: gl-prestamo
+    term: préstamo
+    context: circulación
+    bounded_context: bc-circulacion
+    in_their_words: "Un libro afuera, con fecha de vuelta"
+    invariants: [inv-prestado-no-se-presta]
+    edge_cases:
+      - {case: "Un libro que se lee en la sala y no sale", verdict: no-es, why: "Si no sale del edificio no hay préstamo", speaker: sp-rosa}
+    exclusions:
+      - what: "Préstamos entre bibliotecas de la red"
+        why: "Los lleva la red, con sus propios plazos"
+        speaker: sp-rosa
+    status: confirmado
+    speaker: sp-rosa
+    provenance: {kind: respuesta, question: "Si un socio lee un libro en la sala, ¿eso es un préstamo?", answer: "No, si no sale no es préstamo"}
+  - id: gl-multa
+    term: multa
+    context: circulación
+    bounded_context: bc-circulacion
+    invariants: [inv-multa-por-atraso]
+    status: confirmado
+    speaker: sp-rosa
+    provenance: {kind: respuesta, question: "¿Cómo le dicen a lo que cobra el atraso?", answer: "Multa"}
+  - id: gl-devolucion
+    term: devolución
+    context: circulación
+    bounded_context: bc-circulacion
+    in_their_words: "El libro vuelve, por el mostrador o por el buzón"
+    decision: dec-devolucion-buzon
+    status: confirmado
+    speaker: sp-rosa
+    provenance: {kind: respuesta, question: "¿Cuándo un libro está devuelto?", answer: "Cuando vuelve, por el mostrador o por el buzón"}
+  - id: gl-socio
+    term: socio
+    context: circulación
+    in_their_words: "Quien tiene carnet de la biblioteca"
+    validations:
+      - {words: "El número de carnet tiene ocho dígitos; si tiene siete, está mal cargado", speaker: sp-rosa}
+    status: propuesto
+    speaker: sp-rosa
+    provenance: {kind: respuesta, question: "¿Quién se puede llevar un libro?", answer: "El socio, con su carnet"}
+
+decisions:
+  - id: dec-devolucion-buzon
+    statement: "Un libro dejado en el buzón está devuelto el día que cayó, aunque se registre al día siguiente"
+    speakers: [sp-rosa, sp-tomas]
+    why: "El socio no puede pagar multa por un día en que el libro ya estaba en la biblioteca"
+    alternatives_rejected:
+      - option: "Devuelto recién cuando se registra"
+        why_not: "Cobra al socio un día que no le corresponde"
+    refs: [gl-devolucion, hs-devolucion-buzon]
+    level: process
+    decided_on: "2026-09-15"
+    status: confirmado
+    provenance: {kind: respuesta, question: "¿Los dos aceptan que quede devuelto el día que cayó?", answer: "Sí (Rosa). Sí (Tomás)"}
+  - id: dec-plazo-corridos
+    statement: "Los 14 días del préstamo son corridos"
+    speakers: [sp-rosa]
+    why: "Así se hizo siempre y así lo dice el reglamento de socios"
+    alternatives_asked: {words: "No, nunca se pensó en hábiles: siempre fueron corridos", speaker: sp-rosa}
+    refs: [hs-plazo, ev-prestamo-vencido]
+    level: process
+    decided_on: "2026-09-14"
+    status: confirmado
+    provenance: {kind: respuesta, question: "¿Se consideró alguna vez contar solo días hábiles?", answer: "No, nunca se pensó en hábiles: siempre fueron corridos"}
+  - id: dec-flujos-v1
+    statement: "En Process se recorren el préstamo y la reserva"
+    speakers: [sp-rosa]
+    why: "Son las dos historias del mostrador"
+    alternatives_rejected:
+      - option: "Recorrer también el alta de ejemplares"
+        why_not: "Es de catálogo; Tomás no estaba ese día"
+    refs: [fl-prestamo, fl-reserva]
+    level: process
+    decided_on: "2026-09-12"
+    status: confirmado
+    provenance: {kind: respuesta, question: "¿Qué historias recorremos en detalle?", answer: "El préstamo y la reserva"}
+  - id: dec-flujos-v2
+    statement: "En Process se recorren el préstamo con sus dos fallas y el alta de ejemplares; la reserva queda fuera"
+    speakers: [sp-rosa, sp-tomas]
+    why: "La reserva casi no se usa; el alta de ejemplares es lo que Tomás necesita ver"
+    alternatives_rejected:
+      - option: "Seguir con la reserva"
+        why_not: "Hoy casi nadie reserva; primero lo que pasa todos los días"
+    refs: [fl-prestamo, fl-prestamo-rechazado, fl-vencimiento, fl-catalogacion]
+    supersedes: dec-flujos-v1
+    level: process
+    decided_on: "2026-09-13"
+    status: confirmado
+    provenance: {kind: respuesta, question: "Ahora que está Tomás, ¿qué recorremos?", answer: "El préstamo con lo que sale mal, y el alta de ejemplares (Rosa). Sí (Tomás)"}
+
+open_questions:
+  - id: oq-donde-viven-multas
+    question: "¿Las multas se guardan en el sistema de la red o en uno propio?"
+    level: design
+    target: praxis-design
+    refs: [agg-multa]
+  - id: oq-renovacion
+    question: "¿Cuántas veces se puede renovar, y quién lo decide?"
+    level: design
+    to_speaker: sp-rosa
+    refs: [ev-prestamo-renovado]

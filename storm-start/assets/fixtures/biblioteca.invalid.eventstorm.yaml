@@ -1,0 +1,315 @@
+# Negative fixture: schema-valid, structurally broken. verify.py MUST exit 1 on it, with a FAIL on
+# every check except schema and session. Each defect is labelled with the check that has to catch it.
+# Every level is closed, so every gate runs.
+schema_version: "3.1"
+
+domain:
+  name: "Biblioteca (rota a propósito)"
+  slug: biblioteca-invalida
+  scope:
+    includes: ["Préstamos"]
+    excludes: []
+
+speakers:
+  - {id: sp-rosa, name: Rosa}
+  - {id: sp-tomas, name: Tomás}
+
+session:
+  current_level: design
+  levels:
+    big-picture: {state: cerrado, closed_on: "2026-09-10"}
+    process: {state: cerrado, closed_on: "2026-09-18"}
+    design: {state: cerrado, closed_on: "2026-09-25"}
+  updated: "2026-09-28"
+
+events:
+  - id: ev-libro-prestado              # event-triggers: in a flujo elegido, no trigger
+    name: "Libro prestado"
+    status: confirmado
+    speaker: sp-rosa
+    terms: [ejemplar]                  # glossary-terms: 'ejemplar' is not in the glossary
+    provenance: {kind: respuesta, question: "¿Qué pasa?", answer: "Se presta el libro"}
+  - id: ev-libro-prestado              # unique-ids: duplicated
+    name: "Libro prestado otra vez"
+    status: propuesto
+    speaker: sp-rosa
+    triggered_by: [cmd-prestar-libro]  # triggers: the command's results_in does not list this event
+    provenance: {kind: pregunta, question: "¿Otra vez?"}
+  - id: ev-multa-generada              # big-picture-close: confirmed, in no flow and no open hotspot
+    name: "Multa generada"
+    status: confirmado
+    speaker: sp-rosa
+    triggered_by: [pol-multar]         # triggers: a policy never triggers an event; its command does
+    provenance: {kind: respuesta, question: "¿Y si vence?", answer: "Se genera la multa"}
+  - id: ev-socio-bloqueado
+    name: "Socio bloqueado"
+    status: hipótesis-sin-autor
+    triggered_by: [{time: "cada noche"}]
+    provenance: {kind: fuente, source: "legacy/bloqueo.sql"}  # sources: not in domain.sources
+  - id: ev-libro-reservado             # NOT a defect: outside the flujo elegido, so no trigger is required
+    name: "Libro reservado"
+    status: confirmado
+    speaker: sp-rosa
+    provenance: {kind: respuesta, question: "¿Qué más?", answer: "Se reserva"}
+
+commands:
+  - id: cmd-prestar-libro
+    name: "Prestar libro"
+    status: confirmado
+    speaker: sp-rosa
+    actor: act-fantasma                # refs: no such actor
+    results_in: [ev-no-existe]         # refs + commands: no resulting event
+    failure_paths:                     # process-close: no demora
+      rechazo: ev-libro-prestado       # commands: a failure event outside results_in
+      error: {desconocido: hs-plazo}   # unknowns: hs-plazo is resolved
+    provenance: {kind: pregunta, question: "¿Quién presta?"}
+  - id: cmd-avisar-socio               # design-close: no aggregate handles it, no open hotspot references it
+    name: "Avisar al socio"
+    status: confirmado
+    speaker: sp-rosa
+    actor: {desconocido: hs-no-existe} # unknowns + refs: not a hotspot
+    results_in: [ev-multa-generada]
+    failure_paths:
+      rechazo: {desconocido: hs-bloqueo}   # unknowns: a design hotspot cannot hold a process answer
+      error: {no_aplica: true, words: "Es un mail", speaker: sp-rosa}
+      demora: {no_aplica: true, words: "Llega igual", speaker: sp-rosa}
+    provenance: {kind: pregunta, question: "¿Quién avisa?"}
+
+policies:
+  - id: pol-multar                     # process-close: no mode (its when event is in the flujo elegido)
+    name: "Multar"
+    status: propuesto
+    speaker: sp-rosa
+    when: [ev-libro-prestado, ev-vencido]  # refs + policies: 'ev-vencido' is not an event that exists
+    then: cmd-generar-multa            # refs + policies: 'then' is not a command that exists
+    provenance: {kind: pregunta, question: "¿Cada vez que qué?"}
+
+aggregates:
+  - id: agg-prestamo                   # design-close: no invariant
+    name: "Préstamo"
+    status: propuesto
+    speaker: sp-rosa
+    bounded_context: bc-fantasma       # refs: no such bounded context; design-close: no bounded context
+    handles: [cmd-prestar-libro]
+    provenance: {kind: pregunta, question: "¿Cómo le llaman a esto?"}
+  - id: agg-multa                      # design-close: no invariant
+    name: "Multa"
+    status: propuesto
+    speaker: sp-rosa
+    bounded_context: {desconocido: hs-pago-parcial}  # unknowns: an undecided area points to a frontera-candidata, not an ambigüedad
+    provenance: {kind: pregunta, question: "¿Cómo le llaman a esto?"}
+
+hotspots:
+  - id: hs-pago-parcial
+    question: "¿Una multa pagada a medias está pagada?"
+    type: ambigüedad
+    severity: bloqueante               # hotspot-rules: bloqueante by no rule, no raised_by
+    level: big-picture                 # blocking-hotspots: open and blocking in a closed level
+    resolution: abierto
+    status: propuesto
+    speaker: sp-rosa
+    provenance: {kind: pregunta, question: "¿Una multa pagada a medias está pagada?"}
+  - id: hs-libro-ejemplar
+    question: "¿'Libro' es lo mismo para circulación y para catálogo?"
+    type: frontera-candidata
+    severity: no-bloqueante            # hotspot-rules: its cases got opposite verdicts; a voice lowered it
+    level: big-picture                 # hotspot-rules: a frontera-candidata is resolved at design
+    refs: [gl-libro-circulacion, gl-libro-catalogo]
+    resolution: abierto
+    status: propuesto
+    speaker: sp-tomas
+    provenance: {kind: respuesta, question: "¿Esto nos impide seguir?", answer: "No, sigamos"}
+  - id: hs-buzon
+    question: "¿Un libro en el buzón está devuelto?"
+    type: conflicto-entre-voces
+    severity: no-bloqueante            # hotspot-rules: a conflicto-entre-voces is always bloqueante
+    level: process
+    refs: [gl-devolucion]              # term-decisions: resolved conflict, gl-devolucion has no decision
+    positions:
+      - {speaker: sp-rosa, says: "Cuando lo registro"}
+      - {speaker: sp-tomas, says: "Cuando cae"}
+    resolution: resuelto
+    resolved_by: dec-buzon
+    status: confirmado
+    speaker: sp-rosa
+    provenance: {kind: pregunta, question: "¿Cuándo está devuelto?"}
+  - id: hs-plazo
+    question: "¿Días corridos o hábiles?"
+    type: ambigüedad
+    severity: no-bloqueante
+    level: process
+    resolution: resuelto
+    resolved_by: dec-buzon
+    status: confirmado
+    speaker: sp-rosa
+    provenance: {kind: pregunta, question: "¿Corridos o hábiles?"}
+  - id: hs-multa-desde
+    question: "¿La multa corre desde que vence o desde el día siguiente?"
+    type: conflicto-entre-voces
+    severity: bloqueante
+    level: process                     # hotspot-rules: opened in design, at process, a closed level
+    refs: [gl-devolucion]
+    positions:
+      - {speaker: sp-rosa, says: "Desde que vence"}
+      - {speaker: sp-tomas, says: "Desde el día siguiente"}
+    resolution: abierto
+    status: confirmado
+    speaker: sp-rosa
+    provenance: {kind: pregunta, question: "Si vence el lunes y vuelve el lunes a la tarde, ¿tiene multa?"}
+  - id: hs-frontera-plazo
+    question: "¿'Plazo' es lo mismo para circulación y para catálogo?"
+    type: frontera-candidata
+    severity: bloqueante
+    level: design
+    refs: [gl-plazo-circulacion, gl-plazo-catalogo]
+    resolution: resuelto
+    resolved_by: dec-plazo-unico       # unified-verdicts: unificar, but the case keeps opposite verdicts
+    status: confirmado
+    speaker: sp-rosa
+    provenance: {kind: pregunta, question: "¿Hablan de lo mismo?"}
+  - id: hs-bloqueo
+    question: "¿Quién decidió el bloqueo?"
+    type: complejidad-sin-autor
+    severity: no-bloqueante
+    level: design
+    resolution: abierto
+    status: hipótesis-sin-autor
+    provenance: {kind: fuente, source: "legacy/bloqueo.sql"}
+
+flows:
+  - id: fl-prestamo                    # chosen-flows: chosen in dec-flujos-v2, never walked.process
+    name: "Préstamo"                   # big-picture-close: walked, no pivot, no none_said, no camino de falla
+    kind: principal
+    status: propuesto
+    speaker: sp-rosa
+    steps: [cmd-prestar-libro, ev-libro-prestado]
+    walked: {big-picture: true}
+    provenance: {kind: pregunta, question: "¿Cómo es un préstamo?"}
+  - id: fl-rechazo                     # big-picture-close: falla without failure_of, and no event
+    name: "Falla: no sale"
+    kind: falla
+    status: propuesto
+    speaker: sp-rosa
+    steps: [cmd-prestar-libro]
+    provenance: {kind: pregunta, question: "¿Y si no sale?"}
+  - id: fl-reintento
+    name: "Falla de la falla"
+    kind: falla
+    failure_of: fl-rechazo             # flows: failure_of points to another failure flow
+    status: propuesto
+    speaker: sp-rosa
+    steps: [ev-libro-prestado]
+    provenance: {kind: pregunta, question: "¿Y si el reintento falla?"}
+  - id: fl-reserva                     # NOT a defect: only the superseded dec-flujos-v1 chose it
+    name: "Reserva"
+    kind: principal
+    status: propuesto
+    speaker: sp-rosa
+    steps: [ev-libro-reservado]
+    provenance: {kind: pregunta, question: "¿Y una reserva?"}
+
+glossary:
+  - id: gl-libro-circulacion
+    term: libro
+    context: circulación
+    edge_cases:
+      - {case: "Una segunda copia de un título que ya tenemos", verdict: es, speaker: sp-rosa}
+    status: confirmado                 # NOT a defect: a plain yes confirms a term without a decision
+    speaker: sp-rosa
+    provenance: {kind: respuesta, question: "¿Dos copias son dos libros?", answer: "Sí"}
+  - id: gl-libro-catalogo
+    term: libro
+    context: catálogo
+    edge_cases:
+      - {case: "Una segunda copia de un título que ya tenemos", verdict: no-es, speaker: sp-tomas}
+    status: propuesto
+    speaker: sp-tomas
+    provenance: {kind: respuesta, question: "¿Dos copias son dos libros?", answer: "No"}
+  - id: gl-multa-a
+    term: multa                        # homonym-boundary: two contexts, no frontera-candidata covering both
+    context: circulación
+    status: propuesto
+    speaker: sp-rosa
+    provenance: {kind: pregunta, question: "¿Qué es la multa aquí?"}
+  - id: gl-multa-b
+    term: multa
+    context: tesorería
+    status: disputado                  # disputed-has-hotspot: no open hotspot references it
+    speaker: sp-tomas
+    provenance: {kind: pregunta, question: "¿Y allá?"}
+  - id: gl-plazo-circulacion
+    term: plazo
+    context: circulación
+    decision: dec-plazo-unico
+    edge_cases:
+      - {case: "Un libro que vuelve el día 15 a la tarde", verdict: es, speaker: sp-rosa}
+    status: confirmado
+    speaker: sp-rosa
+    provenance: {kind: respuesta, question: "¿Está en plazo?", answer: "Sí"}
+  - id: gl-plazo-catalogo
+    term: plazo
+    context: catálogo
+    decision: dec-plazo-unico
+    edge_cases:
+      - {case: "Un libro que vuelve el día 15 a la tarde", verdict: no-es, speaker: sp-tomas}
+    status: confirmado
+    speaker: sp-tomas
+    provenance: {kind: respuesta, question: "¿Está en plazo?", answer: "No"}
+  - id: gl-devolucion
+    term: devolución
+    context: circulación
+    status: confirmado
+    speaker: sp-rosa
+    provenance: {kind: pregunta, question: "¿Qué es devolver?"}
+
+decisions:
+  - id: dec-buzon
+    statement: "Devuelto el día que cae en el buzón"
+    speakers: [sp-rosa, sp-tomas]
+    why: "Lo aceptan los dos"
+    alternatives_rejected: []          # decisions: empty, and no alternatives_asked records the question
+    refs: [hs-buzon]
+    level: process
+    status: confirmado
+    provenance: {kind: pregunta, question: "¿Lo aceptan?"}
+  - id: dec-plazo-unico
+    statement: "'Plazo' es uno solo para las dos áreas"
+    speakers: [sp-rosa, sp-tomas]
+    why: "Es lo mismo"
+    alternatives_asked: {words: "No hay otra", speaker: sp-rosa}
+    outcome: unificar
+    refs: [hs-frontera-plazo]
+    level: design
+    status: confirmado
+    provenance: {kind: pregunta, question: "¿Uno o dos?"}
+  - id: dec-flujos-v1
+    statement: "En Process se recorre la reserva"
+    speakers: [sp-rosa]
+    why: "Es corta"
+    alternatives_rejected:
+      - {option: "El préstamo", why_not: "Después"}
+    refs: [fl-reserva]
+    level: process
+    status: confirmado
+    provenance: {kind: pregunta, question: "¿Qué recorremos?"}
+  - id: dec-flujos-v2
+    statement: "En Process se recorre el préstamo"
+    speakers: [sp-rosa]
+    why: "Es el de todos los días"
+    alternatives_rejected:
+      - {option: "La reserva", why_not: "Casi no se usa"}
+    refs: [fl-prestamo]
+    supersedes: dec-flujos-v1
+    level: process
+    status: confirmado
+    provenance: {kind: pregunta, question: "¿Y ahora?"}
+  - id: dec-codigo
+    statement: "Se decide otra cosa"
+    speakers: [sp-tomas]
+    why: "Porque sí"
+    alternatives_rejected:
+      - {option: "Nada", why_not: "No"}
+    supersedes: dec-flujos-v1          # decisions: supersedes a decision of another level
+    level: design
+    status: confirmado
+    provenance: {kind: pregunta, question: "¿Otra?"}
